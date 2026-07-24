@@ -1,10 +1,10 @@
-export type Category = {
+export type ProductCategory = {
   slug: string;
   name: string;
   description: string;
 };
 
-export const PRODUCT_CATEGORIES: Category[] = [
+export const PRODUCT_CATEGORIES: ProductCategory[] = [
   {
     slug: "shirts",
     name: "Shirts",
