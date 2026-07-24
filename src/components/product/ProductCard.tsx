@@ -10,7 +10,7 @@ type ProductCardProps = {
 };
 
 export function ProductCard({ product }: ProductCardProps) {
-  const href = `/shop/${product.category}/${product.slug}`;
+  const href = `/shop/${product.category_slug}/${product.slug}`;
   const image = product.images[0];
 
   return (
@@ -23,7 +23,7 @@ export function ProductCard({ product }: ProductCardProps) {
         {image ? (
           <CardMedia
             component="img"
-            image={image.src}
+            image={image.url}
             alt={image.alt}
             sx={{ width: "100%", height: "100%", objectFit: "cover" }}
           />
@@ -31,10 +31,10 @@ export function ProductCard({ product }: ProductCardProps) {
       </Box>
       <CardContent>
         <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-          {product.name}
+          {product.title}
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          {formatCurrency(product.price, product.currency)}
+          {formatCurrency(product.pricing.price, product.pricing.currency)}
         </Typography>
       </CardContent>
     </Card>

@@ -21,11 +21,11 @@ export function CartItemRow({
   onRemove,
 }: CartItemRowProps) {
   return (
-    <Stack direction="row" spacing={1.5} sx={{ py: 1.5 }}>
+    <Stack direction="row" spacing={{ xs: 1.25, sm: 1.5 }} sx={{ py: { xs: 1.25, sm: 1.5 } }}>
       <Box
         sx={{
-          width: 84,
-          height: 104,
+          width: { xs: 72, sm: 84 },
+          height: { xs: 90, sm: 104 },
           flexShrink: 0,
           borderRadius: 1,
           overflow: "hidden",
@@ -57,7 +57,11 @@ export function CartItemRow({
       <Stack sx={{ flex: 1, minWidth: 0, gap: 0.75 }}>
         <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1 }}>
           <Box sx={{ minWidth: 0 }}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 700 }} noWrap>
+            <Typography
+              variant="subtitle2"
+              sx={{ fontWeight: 700, fontSize: { xs: "0.8rem", sm: "0.875rem" } }}
+              noWrap
+            >
               {item.name}
             </Typography>
             <Typography variant="caption" color="text.secondary">
@@ -68,9 +72,15 @@ export function CartItemRow({
             aria-label={`Remove ${item.name}`}
             size="small"
             onClick={onRemove}
-            sx={{ borderRadius: 1, alignSelf: "flex-start" }}
+            sx={{
+              borderRadius: 1,
+              alignSelf: "flex-start",
+              width: { xs: 28, sm: 34 },
+              height: { xs: 28, sm: 34 },
+              p: 0.5,
+            }}
           >
-            <DeleteOutlineRoundedIcon fontSize="small" />
+            <DeleteOutlineRoundedIcon sx={{ fontSize: { xs: 15, sm: 18 } }} />
           </IconButton>
         </Stack>
 
@@ -92,16 +102,21 @@ export function CartItemRow({
               aria-label="Decrease quantity"
               size="small"
               onClick={onDecrease}
-              sx={{ borderRadius: 0, width: 32, height: 32 }}
+              sx={{
+                borderRadius: 0,
+                width: { xs: 26, sm: 32 },
+                height: { xs: 26, sm: 32 },
+              }}
             >
-              <RemoveRoundedIcon sx={{ fontSize: 16 }} />
+              <RemoveRoundedIcon sx={{ fontSize: { xs: 13, sm: 16 } }} />
             </IconButton>
             <Typography
               variant="body2"
               sx={{
-                width: 28,
+                width: { xs: 22, sm: 28 },
                 textAlign: "center",
                 fontWeight: 600,
+                fontSize: { xs: "0.75rem", sm: "0.875rem" },
                 userSelect: "none",
               }}
             >
@@ -111,13 +126,20 @@ export function CartItemRow({
               aria-label="Increase quantity"
               size="small"
               onClick={onIncrease}
-              sx={{ borderRadius: 0, width: 32, height: 32 }}
+              sx={{
+                borderRadius: 0,
+                width: { xs: 26, sm: 32 },
+                height: { xs: 26, sm: 32 },
+              }}
             >
-              <AddRoundedIcon sx={{ fontSize: 16 }} />
+              <AddRoundedIcon sx={{ fontSize: { xs: 13, sm: 16 } }} />
             </IconButton>
           </Stack>
 
-          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+          <Typography
+            variant="subtitle2"
+            sx={{ fontWeight: 700, fontSize: { xs: "0.8rem", sm: "0.875rem" } }}
+          >
             {formatCurrency(item.price * item.quantity, item.currency)}
           </Typography>
         </Stack>

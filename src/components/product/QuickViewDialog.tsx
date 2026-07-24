@@ -37,7 +37,7 @@ export function QuickViewDialog({
   if (!product) return null;
 
   const image = product.images[0];
-  const href = `/shop/${product.category}/${product.slug}`;
+  const href = `/shop/${product.category_slug}/${product.slug}`;
 
   return (
     <Dialog
@@ -74,7 +74,7 @@ export function QuickViewDialog({
           <div className="relative aspect-[3/4] bg-[#f0ebe3] md:aspect-auto md:min-h-[420px]">
             {image ? (
               <Image
-                src={image.src}
+                src={image.url}
                 alt={image.alt}
                 fill
                 sizes="(max-width: 768px) 100vw, 50vw"
@@ -89,30 +89,33 @@ export function QuickViewDialog({
               color="text.secondary"
               sx={{ fontWeight: 700, letterSpacing: "0.12em" }}
             >
-              {product.category}
+              {product.brand_or_vendor} · {product.category}
             </Typography>
             <Typography variant="h5" sx={{ fontWeight: 700, letterSpacing: "-0.02em" }}>
-              {product.name}
+              {product.title}
             </Typography>
             <Typography color="text.secondary">{product.description}</Typography>
 
             <Stack direction="row" spacing={1.5} sx={{ alignItems: "baseline" }}>
               <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                {formatCurrency(product.price, product.currency)}
+                {formatCurrency(product.pricing.price, product.pricing.currency)}
               </Typography>
-              {product.compareAtPrice ? (
+              {product.pricing.compareAtPrice ? (
                 <Typography
                   variant="body2"
                   color="text.secondary"
                   sx={{ textDecoration: "line-through" }}
                 >
-                  {formatCurrency(product.compareAtPrice, product.currency)}
+                  {formatCurrency(product.pricing.compareAtPrice, product.pricing.currency)}
                 </Typography>
               ) : null}
             </Stack>
 
             <Typography variant="body2" color="text.secondary">
-              Sizes: {product.sizes.join(", ")}
+              Sizes: {product.attributes.sizes.join(", ")}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Rating: {product.ratings.average} ({product.ratings.count})
             </Typography>
 
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ mt: 1 }}>

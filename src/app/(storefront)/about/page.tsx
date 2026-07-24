@@ -1,14 +1,12 @@
-import { Typography } from "@mui/material";
+import type { Metadata } from "next";
+import { AboutPage } from "@/components/about/AboutPage";
 
-export default function AboutPage() {
-  return (
-    <>
-      <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
-        About
-      </Typography>
-      <Typography color="text.secondary" sx={{ mt: 1 }}>
-        Brand story and values will appear here.
-      </Typography>
-    </>
-  );
+export const metadata: Metadata = {
+  title: "About",
+  description:
+    "Eco Fashion — men's wear built for everyday clarity. Thoughtful cuts, lasting fabrics, and pieces that work harder in your wardrobe.",
+};
+
+export default function About() {
+  return <AboutPage />;
 }

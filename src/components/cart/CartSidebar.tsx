@@ -65,9 +65,11 @@ export function CartSidebar() {
             border: "1px solid",
             borderColor: "divider",
             borderRadius: 1,
+            width: { xs: 32, sm: 40 },
+            height: { xs: 32, sm: 40 },
           }}
         >
-          <CloseRoundedIcon fontSize="small" />
+          <CloseRoundedIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
         </IconButton>
       </Stack>
 
@@ -86,8 +88,8 @@ export function CartSidebar() {
           >
             <Box
               sx={{
-                width: 64,
-                height: 64,
+                width: { xs: 52, sm: 64 },
+                height: { xs: 52, sm: 64 },
                 borderRadius: 1,
                 bgcolor: "rgba(31, 111, 91, 0.08)",
                 display: "grid",
@@ -95,7 +97,10 @@ export function CartSidebar() {
                 mb: 1,
               }}
             >
-              <ShoppingBagOutlinedIcon color="primary" />
+              <ShoppingBagOutlinedIcon
+                color="primary"
+                sx={{ fontSize: { xs: 22, sm: 28 } }}
+              />
             </Box>
             <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
               Your cart is empty
@@ -164,7 +169,7 @@ export function CartSidebar() {
             </Button>
             <Button
               component={Link}
-              href="/cart"
+              href="/account?tab=cart"
               variant="outlined"
               size="large"
               fullWidth

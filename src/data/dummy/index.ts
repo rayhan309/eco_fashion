@@ -4,3 +4,6 @@
  */
 export { dummyCategories } from "./categories";
 export { dummyProducts } from "./products";
+export { dummyReviews } from "./reviews";
+export { dummyCollections } from "./collections";
+export { dummyOrders } from "./orders";

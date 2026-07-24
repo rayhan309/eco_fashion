@@ -16,13 +16,13 @@ type AddItemInput = Omit<CartItem, "quantity"> & {
 const sampleItems: CartItem[] = products.slice(0, 2).map((product, index) => ({
   productId: product.id,
   slug: product.slug,
-  name: product.name,
-  price: product.price,
-  currency: product.currency,
+  name: product.title,
+  price: product.pricing.price,
+  currency: product.pricing.currency,
   quantity: index === 0 ? 1 : 2,
-  size: product.sizes[1] ?? "M",
-  color: product.colors[0] ?? "Default",
-  image: product.images[0]?.src ?? "",
+  size: product.attributes.sizes[1] ?? "M",
+  color: product.attributes.colors[0] ?? "Default",
+  image: product.images[0]?.url ?? "",
 }));
 
 let cartState: CartStore = { items: sampleItems };

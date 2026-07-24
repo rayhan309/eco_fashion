@@ -10,3 +10,23 @@ body {
   min-width: 320px;
   background: #f6f3ed;
 }
+
+button,
+[type="button"],
+[type="submit"],
+[type="reset"],
+[role="button"],
+a,
+summary,
+label[for],
+.MuiButtonBase-root {
+  cursor: pointer;
+}
+
+button:disabled,
+[type="button"]:disabled,
+[type="submit"]:disabled,
+[type="reset"]:disabled,
+.MuiButtonBase-root.Mui-disabled {
+  cursor: not-allowed;
+}

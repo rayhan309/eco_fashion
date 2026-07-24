@@ -5,7 +5,7 @@ export type CartItem = {
   slug: string;
   name: string;
   price: number;
-  currency: Product["currency"];
+  currency: Product["pricing"]["currency"];
   quantity: number;
   size: ProductSize;
   color: string;
@@ -15,5 +15,5 @@ export type CartItem = {
 export type Cart = {
   items: CartItem[];
   subtotal: number;
-  currency: Product["currency"];
+  currency: Product["pricing"]["currency"];
 };

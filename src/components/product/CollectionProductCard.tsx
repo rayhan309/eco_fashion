@@ -21,8 +21,9 @@ type CollectionProductCardProps = {
 };
 
 const actionBtnClass =
-  "flex h-10 w-10 items-center justify-center rounded-md border border-[rgba(32,49,45,0.1)] bg-white text-[#20312d] shadow-sm transition-colors hover:border-[#1f6f5b] hover:bg-[#1f6f5b] hover:text-white";
+  "flex h-7 w-7 items-center justify-center rounded-md border border-[rgba(32,49,45,0.1)] bg-white text-[#20312d] shadow-sm transition-colors hover:border-[#1f6f5b] hover:bg-[#1f6f5b] hover:text-white sm:h-9 sm:w-9 md:h-10 md:w-10";
 
+const actionIconSx = { fontSize: { xs: 14, sm: 16, md: 18 } };
 export function CollectionProductCard({ product, index = 0 }: CollectionProductCardProps) {
   const [quickViewOpen, setQuickViewOpen] = useState(false);
   const { addItem } = useCart();
@@ -30,18 +31,18 @@ export function CollectionProductCard({ product, index = 0 }: CollectionProductC
   const { isWishlisted, toggleWishlist } = useWishlist();
   const wishlisted = isWishlisted(product.id);
   const image = product.images[0];
-  const href = `/shop/${product.category}/${product.slug}`;
+  const href = `/shop/${product.category_slug}/${product.slug}`;
 
   function handleAddToCart() {
     addItem({
       productId: product.id,
       slug: product.slug,
-      name: product.name,
-      price: product.price,
-      currency: product.currency,
-      size: product.sizes[1] ?? product.sizes[0] ?? "M",
-      color: product.colors[0] ?? "Default",
-      image: image?.src ?? "",
+      name: product.title,
+      price: product.pricing.price,
+      currency: product.pricing.currency,
+      size: product.attributes.sizes[1] ?? product.attributes.sizes[0] ?? "M",
+      color: product.attributes.colors[0] ?? "Default",
+      image: image?.url ?? "",
     });
     openCart();
   }
@@ -59,7 +60,7 @@ export function CollectionProductCard({ product, index = 0 }: CollectionProductC
           <Link href={href} className="relative block aspect-[3/4] overflow-hidden">
             {image ? (
               <Image
-                src={image.src}
+                src={image.url}
                 alt={image.alt}
                 fill
                 sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
@@ -68,16 +69,13 @@ export function CollectionProductCard({ product, index = 0 }: CollectionProductC
             ) : null}
           </Link>
 
-          {product.compareAtPrice ? (
+          {product.pricing.compareAtPrice ? (
             <span className="absolute top-3 left-3 rounded-md bg-[#1f6f5b] px-2 py-1 text-[11px] font-bold tracking-wide text-white uppercase">
               Sale
             </span>
           ) : null}
 
-          {/* Mobile: always visible. Desktop: reveal on hover */}
-          <div
-            className="absolute top-3 right-3 z-10 flex flex-col gap-2 opacity-100 translate-y-0 transition-all duration-300 ease-out md:pointer-events-none md:translate-y-2 md:opacity-0 md:group-hover:pointer-events-auto md:group-hover:translate-y-0 md:group-hover:opacity-100"
-          >
+          <div className="absolute top-2 right-2 z-10 flex translate-y-0 flex-col gap-1.5 opacity-100 transition-all duration-300 ease-out sm:top-3 sm:right-3 sm:gap-2 md:pointer-events-none md:translate-y-2 md:opacity-0 md:group-hover:pointer-events-auto md:group-hover:translate-y-0 md:group-hover:opacity-100">
             <button
               type="button"
               aria-label={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
@@ -85,28 +83,28 @@ export function CollectionProductCard({ product, index = 0 }: CollectionProductC
               className={`${actionBtnClass} ${wishlisted ? "border-[#1f6f5b] text-[#1f6f5b]" : ""}`}
             >
               {wishlisted ? (
-                <FavoriteRoundedIcon sx={{ fontSize: 18 }} />
+                <FavoriteRoundedIcon sx={actionIconSx} />
               ) : (
-                <FavoriteBorderRoundedIcon sx={{ fontSize: 18 }} />
+                <FavoriteBorderRoundedIcon sx={actionIconSx} />
               )}
             </button>
 
             <button
               type="button"
-              aria-label={`Quick view ${product.name}`}
+              aria-label={`Quick view ${product.title}`}
               onClick={() => setQuickViewOpen(true)}
               className={actionBtnClass}
             >
-              <VisibilityOutlinedIcon sx={{ fontSize: 18 }} />
+              <VisibilityOutlinedIcon sx={actionIconSx} />
             </button>
 
             <button
               type="button"
-              aria-label={`Add ${product.name} to cart`}
+              aria-label={`Add ${product.title} to cart`}
               onClick={handleAddToCart}
               className={actionBtnClass}
             >
-              <ShoppingBagOutlinedIcon sx={{ fontSize: 18 }} />
+              <ShoppingBagOutlinedIcon sx={actionIconSx} />
             </button>
           </div>
 
@@ -115,21 +113,21 @@ export function CollectionProductCard({ product, index = 0 }: CollectionProductC
 
         <div className="flex flex-1 flex-col gap-1 pt-3">
           <p className="text-xs font-semibold tracking-[0.12em] text-[#61716a] uppercase">
-            {product.category.replace(/-/g, " ")}
+            {product.brand_or_vendor}
           </p>
           <Link
             href={href}
             className="text-sm font-bold text-[#20312d] transition-colors hover:text-[#1f6f5b] sm:text-base"
           >
-            {product.name}
+            {product.title}
           </Link>
           <div className="mt-auto flex items-center gap-2 pt-1">
             <span className="text-sm font-bold text-[#20312d]">
-              {formatCurrency(product.price, product.currency)}
+              {formatCurrency(product.pricing.price, product.pricing.currency)}
             </span>
-            {product.compareAtPrice ? (
+            {product.pricing.compareAtPrice ? (
               <span className="text-xs text-[#61716a] line-through">
-                {formatCurrency(product.compareAtPrice, product.currency)}
+                {formatCurrency(product.pricing.compareAtPrice, product.pricing.currency)}
               </span>
             ) : null}
           </div>

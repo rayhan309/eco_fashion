@@ -49,6 +49,7 @@ export const theme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: RADIUS_MD,
+          cursor: "pointer",
         },
       },
     },
@@ -56,6 +57,36 @@ export const theme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: RADIUS_MD,
+          cursor: "pointer",
+        },
+      },
+    },
+    MuiButtonBase: {
+      styleOverrides: {
+        root: {
+          cursor: "pointer",
+        },
+      },
+    },
+    MuiLink: {
+      styleOverrides: {
+        root: {
+          cursor: "pointer",
+        },
+      },
+    },
+    MuiListItemButton: {
+      styleOverrides: {
+        root: {
+          cursor: "pointer",
+        },
+      },
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          borderRadius: RADIUS_MD,
+          cursor: "pointer",
         },
       },
     },
@@ -82,13 +113,6 @@ export const theme = createTheme({
       styleOverrides: {
         paper: {
           borderRadius: 0,
-        },
-      },
-    },
-    MuiChip: {
-      styleOverrides: {
-        root: {
-          borderRadius: RADIUS_MD,
         },
       },
     },

@@ -1,5 +1,6 @@
 "use client";
 
+import FavoriteBorderRoundedIcon from "@mui/icons-material/FavoriteBorderRounded";
 import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
 import PersonOutlineRoundedIcon from "@mui/icons-material/PersonOutlineRounded";
 import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
@@ -18,14 +19,32 @@ import { useState } from "react";
 import { Container } from "@/components/container";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { useCart } from "@/hooks/useCart";
+import { useWishlist } from "@/hooks/useWishlist";
 import { MAIN_NAV } from "@/lib/constants/navigation";
 import { useCartUI } from "@/providers/CartUIProvider";
+
+const iconBtnSx = {
+  border: "1px solid",
+  borderColor: "divider",
+  borderRadius: 1,
+} as const;
+
+const badgeSx = {
+  "& .MuiBadge-badge": {
+    borderRadius: 1,
+    fontWeight: 700,
+    minWidth: 18,
+    height: 18,
+    fontSize: "0.65rem",
+  },
+} as const;
 
 export function Header() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { openCart } = useCartUI();
   const { itemCount } = useCart();
+  const { count: wishlistCount } = useWishlist();
 
   return (
     <>
@@ -57,9 +76,7 @@ export function Header() {
                 onClick={() => setMobileOpen(true)}
                 sx={{
                   display: { xs: "inline-flex", md: "none" },
-                  border: "1px solid",
-                  borderColor: "divider",
-                  borderRadius: 1,
+                  ...iconBtnSx,
                 }}
               >
                 <MenuRoundedIcon />
@@ -127,41 +144,29 @@ export function Header() {
             <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
               <IconButton
                 component={Link}
-                href="/account"
+                href="/account?tab=profile"
                 aria-label="Account"
                 sx={{
                   display: { xs: "none", sm: "inline-flex" },
-                  border: "1px solid",
-                  borderColor: "divider",
-                  borderRadius: 1,
+                  ...iconBtnSx,
                 }}
               >
                 <PersonOutlineRoundedIcon />
               </IconButton>
 
               <IconButton
-                aria-label="Open cart"
-                onClick={openCart}
-                sx={{
-                  border: "1px solid",
-                  borderColor: "divider",
-                  borderRadius: 1,
-                }}
+                component={Link}
+                href="/account?tab=wishlist"
+                aria-label="Wishlist"
+                sx={iconBtnSx}
               >
-                <Badge
-                  badgeContent={itemCount}
-                  color="primary"
-                  max={99}
-                  sx={{
-                    "& .MuiBadge-badge": {
-                      borderRadius: 1,
-                      fontWeight: 700,
-                      minWidth: 18,
-                      height: 18,
-                      fontSize: "0.65rem",
-                    },
-                  }}
-                >
+                <Badge badgeContent={wishlistCount} color="primary" max={99} sx={badgeSx}>
+                  <FavoriteBorderRoundedIcon />
+                </Badge>
+              </IconButton>
+
+              <IconButton aria-label="Open cart" onClick={openCart} sx={iconBtnSx}>
+                <Badge badgeContent={itemCount} color="primary" max={99} sx={badgeSx}>
                   <ShoppingBagOutlinedIcon />
                 </Badge>
               </IconButton>

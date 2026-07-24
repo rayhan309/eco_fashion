@@ -11,3 +11,9 @@ export {
   getTopCategories,
   getCategoryBySlug,
 } from "./categories";
+export { getClientReviews } from "./reviews";
+export {
+  getCollections,
+  getCollectionBySlug,
+  getCollectionProductsBySlug,
+} from "./collections";

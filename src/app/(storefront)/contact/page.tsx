@@ -1,14 +1,12 @@
-import { Typography } from "@mui/material";
+import type { Metadata } from "next";
+import { ContactPage } from "@/components/contact/ContactPage";
 
-export default function ContactPage() {
-  return (
-    <>
-      <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
-        Contact
-      </Typography>
-      <Typography color="text.secondary" sx={{ mt: 1 }}>
-        Support and contact details will appear here.
-      </Typography>
-    </>
-  );
+export const metadata: Metadata = {
+  title: "Contact",
+  description:
+    "Contact Eco Fashion — sizing help, order support, and styling advice. Email, phone, or send us a message.",
+};
+
+export default function Contact() {
+  return <ContactPage />;
 }

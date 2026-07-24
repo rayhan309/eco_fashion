@@ -1,14 +1,23 @@
-import { Typography } from "@mui/material";
+import { PageHeader } from "@/components/shop/PageHeader";
+import { ProductListingGrid } from "@/components/shop/ProductListingGrid";
+import { getProducts } from "@/services/products";
 
-export default function ShopPage() {
+export default async function ShopPage() {
+  const products = await getProducts();
+
   return (
-    <>
-      <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
-        Shop
-      </Typography>
-      <Typography color="text.secondary" sx={{ mt: 1 }}>
-        Browse the full men&apos;s collection.
-      </Typography>
-    </>
+    <div className="flex flex-col gap-6 md:gap-8">
+      <PageHeader
+        title="Shop"
+        description="Browse the full men&apos;s collection — shirts, pants, outerwear, and finishing pieces."
+        countLabel={`${products.length} products`}
+        breadcrumbs={[
+          { label: "Home", href: "/" },
+          { label: "Shop" },
+        ]}
+      />
+
+      <ProductListingGrid products={products} />
+    </div>
   );
 }

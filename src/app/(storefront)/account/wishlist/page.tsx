@@ -1,14 +1,5 @@
-import { Typography } from "@mui/material";
+import { redirect } from "next/navigation";
 
-export default function WishlistPage() {
-  return (
-    <>
-      <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
-        Wishlist
-      </Typography>
-      <Typography color="text.secondary" sx={{ mt: 1 }}>
-        Saved items will appear here.
-      </Typography>
-    </>
-  );
+export default function AccountWishlistRedirectPage() {
+  redirect("/account?tab=wishlist");
 }
