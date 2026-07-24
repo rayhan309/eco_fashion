@@ -1,5 +1,8 @@
 import { createTheme } from "@mui/material/styles";
 
+/** Tailwind `rounded-md` = 6px — used site-wide */
+const RADIUS_MD = 6;
+
 export const theme = createTheme({
   palette: {
     mode: "light",
@@ -18,9 +21,10 @@ export const theme = createTheme({
       primary: "#20312d",
       secondary: "#61716a",
     },
+    divider: "rgba(32, 49, 45, 0.1)",
   },
   shape: {
-    borderRadius: 12,
+    borderRadius: RADIUS_MD,
   },
   typography: {
     fontFamily: "var(--font-geist-sans), sans-serif",
@@ -42,12 +46,77 @@ export const theme = createTheme({
       defaultProps: {
         disableElevation: true,
       },
+      styleOverrides: {
+        root: {
+          borderRadius: RADIUS_MD,
+        },
+      },
+    },
+    MuiIconButton: {
+      styleOverrides: {
+        root: {
+          borderRadius: RADIUS_MD,
+        },
+      },
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          borderRadius: RADIUS_MD,
+        },
+        rounded: {
+          borderRadius: RADIUS_MD,
+        },
+      },
     },
     MuiCard: {
       styleOverrides: {
         root: {
+          borderRadius: RADIUS_MD,
           border: "1px solid rgba(31, 111, 91, 0.12)",
           boxShadow: "0 18px 50px rgba(32, 49, 45, 0.08)",
+        },
+      },
+    },
+    MuiDrawer: {
+      styleOverrides: {
+        paper: {
+          borderRadius: 0,
+        },
+      },
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          borderRadius: RADIUS_MD,
+        },
+      },
+    },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          borderRadius: RADIUS_MD,
+        },
+      },
+    },
+    MuiDialog: {
+      styleOverrides: {
+        paper: {
+          borderRadius: RADIUS_MD,
+        },
+      },
+    },
+    MuiMenu: {
+      styleOverrides: {
+        paper: {
+          borderRadius: RADIUS_MD,
+        },
+      },
+    },
+    MuiBadge: {
+      styleOverrides: {
+        badge: {
+          borderRadius: RADIUS_MD,
         },
       },
     },
