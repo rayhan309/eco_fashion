@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Box, Container, Stack, Typography } from "@mui/material";
+import { Box, Stack, Typography } from "@mui/material";
+import { Container } from "@/components/container";
 import { FOOTER_NAV } from "@/lib/constants/navigation";
 
 export function Footer() {
@@ -16,7 +17,7 @@ export function Footer() {
         mt: "auto",
       }}
     >
-      <Container maxWidth="lg" sx={{ px: { xs: 2, sm: 3 } }}>
+      <Container>
         <Stack
           direction={{ xs: "column", md: "row" }}
           sx={{

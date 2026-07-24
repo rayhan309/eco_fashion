@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { Box, Container } from "@mui/material";
+import { Box } from "@mui/material";
+import { Container } from "@/components/container";
 
 type AuthLayoutProps = {
   children: ReactNode;
@@ -16,7 +17,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
         py: { xs: 6, md: 10 },
       }}
     >
-      <Container maxWidth="sm">{children}</Container>
+      <Container size="narrow">{children}</Container>
     </Box>
   );
 }

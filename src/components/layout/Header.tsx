@@ -8,7 +8,6 @@ import {
   Badge,
   Box,
   Button,
-  Container,
   IconButton,
   Toolbar,
   Typography,
@@ -16,6 +15,7 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { Container } from "@/components/container";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { useCart } from "@/hooks/useCart";
 import { MAIN_NAV } from "@/lib/constants/navigation";
@@ -42,11 +42,11 @@ export function Header() {
           backdropFilter: "blur(14px)",
         }}
       >
-        <Container maxWidth="lg" disableGutters>
+        <Container>
           <Toolbar
+            disableGutters
             sx={{
               minHeight: { xs: 64, md: 72 },
-              px: { xs: 1.5, sm: 2, md: 3 },
               gap: 1,
               justifyContent: "space-between",
             }}
