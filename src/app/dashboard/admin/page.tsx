@@ -1,14 +1,13 @@
 import type { Metadata } from "next";
+import { AdminOverview } from "@/components/admin";
+import { getAdminOverview } from "@/services/admin";
 
 export const metadata: Metadata = {
   title: "Overview",
 };
 
-export default function AdminOverviewPage() {
-  return (
-    <div>
-      <h1>Overview</h1>
-      <p>Admin dashboard overview page.</p>
-    </div>
-  );
+export default async function AdminOverviewPage() {
+  const data = await getAdminOverview();
+
+  return <AdminOverview data={data} />;
 }
