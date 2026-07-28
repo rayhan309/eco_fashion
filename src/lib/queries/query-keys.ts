@@ -1,0 +1,21 @@
+export const queryKeys = {
+  site: {
+    all: ["site"] as const,
+    settings: () => [...queryKeys.site.all, "settings"] as const,
+  },
+  home: {
+    all: ["home"] as const,
+    page: () => [...queryKeys.home.all, "page"] as const,
+  },
+  admin: {
+    all: ["admin"] as const,
+    overview: () => [...queryKeys.admin.all, "overview"] as const,
+    orders: () => [...queryKeys.admin.all, "orders"] as const,
+    productsCatalog: () => [...queryKeys.admin.all, "products-catalog"] as const,
+    categories: () => [...queryKeys.admin.all, "categories"] as const,
+    customers: () => [...queryKeys.admin.all, "customers"] as const,
+    productAttributes: () => [...queryKeys.admin.all, "product-attributes"] as const,
+    collections: () => [...queryKeys.admin.all, "collections"] as const,
+    settings: () => [...queryKeys.admin.all, "settings"] as const,
+  },
+} as const;

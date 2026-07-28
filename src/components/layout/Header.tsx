@@ -2,7 +2,6 @@
 
 import FavoriteBorderRoundedIcon from "@mui/icons-material/FavoriteBorderRounded";
 import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
-import PersonOutlineRoundedIcon from "@mui/icons-material/PersonOutlineRounded";
 import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
 import {
   AppBar,
@@ -19,6 +18,7 @@ import { useState } from "react";
 import { Container } from "@/components/container";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { useCart } from "@/hooks/useCart";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useWishlist } from "@/hooks/useWishlist";
 import { MAIN_NAV } from "@/lib/constants/navigation";
 import { useCartUI } from "@/providers/CartUIProvider";
@@ -41,6 +41,7 @@ const badgeSx = {
 
 export function Header() {
   const pathname = usePathname();
+  const settings = useSiteSettings();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { openCart } = useCartUI();
   const { itemCount } = useCart();
@@ -93,9 +94,20 @@ export function Header() {
                   textDecoration: "none",
                   fontSize: { xs: "1.05rem", sm: "1.2rem" },
                   whiteSpace: "nowrap",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
                 }}
               >
-                Eco Fashion
+                {settings.logoUrl ? (
+                  <Box
+                    component="img"
+                    src={settings.logoUrl}
+                    alt=""
+                    sx={{ height: 32, width: "auto", display: "block" }}
+                  />
+                ) : null}
+                {settings.shopName}
               </Typography>
             </Box>
 
@@ -144,20 +156,8 @@ export function Header() {
             <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
               <IconButton
                 component={Link}
-                href="/account?tab=profile"
-                aria-label="Account"
-                sx={{
-                  display: { xs: "none", sm: "inline-flex" },
-                  ...iconBtnSx,
-                }}
-              >
-                <PersonOutlineRoundedIcon />
-              </IconButton>
-
-              <IconButton
-                component={Link}
-                href="/account?tab=wishlist"
-                aria-label="Wishlist"
+                href="/shop"
+                aria-label="Wishlist items in shop"
                 sx={iconBtnSx}
               >
                 <Badge badgeContent={wishlistCount} color="primary" max={99} sx={badgeSx}>

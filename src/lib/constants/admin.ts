@@ -1,11 +1,13 @@
 import AssessmentOutlinedIcon from "@mui/icons-material/AssessmentOutlined";
 import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
 import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
+import ManageAccountsOutlinedIcon from "@mui/icons-material/ManageAccountsOutlined";
 import PeopleOutlineOutlinedIcon from "@mui/icons-material/PeopleOutlineOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
-import ViewCarouselOutlinedIcon from "@mui/icons-material/ViewCarouselOutlined";
 import type { SvgIconComponent } from "@mui/icons-material";
+import { canAccessPath, canManageUsers } from "@/lib/auth/permissions";
+import type { AdminRole } from "@/lib/validations/admin-user";
 
 export type AdminNavLink = {
   type: "link";
@@ -39,6 +41,12 @@ export const ADMIN_NAV: AdminNavEntry[] = [
   },
   { type: "link", label: "Customers", href: "/dashboard/admin/customers", icon: PeopleOutlineOutlinedIcon },
   {
+    type: "link",
+    label: "Users",
+    href: "/dashboard/admin/users",
+    icon: ManageAccountsOutlinedIcon,
+  },
+  {
     type: "group",
     label: "Settings",
     icon: SettingsOutlinedIcon,
@@ -57,6 +65,29 @@ export const ADMIN_NAV: AdminNavEntry[] = [
     children: [{ label: "Sales", href: "/dashboard/admin" }],
   },
 ];
+
+export function filterNavForRole(role: AdminRole): AdminNavEntry[] {
+  const result: AdminNavEntry[] = [];
+
+  for (const entry of ADMIN_NAV) {
+    if (entry.type === "link") {
+      if (entry.href === "/dashboard/admin/users" && !canManageUsers(role)) {
+        continue;
+      }
+      if (canAccessPath(role, entry.href)) {
+        result.push(entry);
+      }
+      continue;
+    }
+
+    const children = entry.children.filter((child) => canAccessPath(role, child.href));
+    if (children.length > 0) {
+      result.push({ ...entry, children });
+    }
+  }
+
+  return result;
+}
 
 export const ADMIN_SIDEBAR_WIDTH = 272;
 export const ADMIN_ACCENT = "#1f6f5b";

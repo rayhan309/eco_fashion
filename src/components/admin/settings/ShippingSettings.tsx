@@ -16,9 +16,10 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { SettingsSection } from "@/components/admin/settings/SettingsSection";
+import { useAdminSiteSettings } from "@/hooks/useAdminSiteSettings";
 import { ADMIN_ACCENT } from "@/lib/constants/admin";
 
 type ShippingFormValues = {
@@ -69,6 +70,8 @@ const deleteButtonSx = {
 
 export function ShippingSettings() {
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const { data: siteSettings, isLoading, saveMutation } = useAdminSiteSettings();
 
   const {
     control,
@@ -96,6 +99,11 @@ export function ShippingSettings() {
     },
     mode: "onBlur",
   });
+
+  useEffect(() => {
+    if (!siteSettings) return;
+    setValue("freeShippingMinimum", String(siteSettings.freeDeliveryMinimum));
+  }, [siteSettings, setValue]);
 
   const {
     fields: areaFields,
@@ -166,9 +174,20 @@ export function ShippingSettings() {
     });
   }
 
-  function onSubmit(_values: ShippingFormValues) {
-    setSaved(true);
-    window.setTimeout(() => setSaved(false), 3000);
+  async function onSubmit(values: ShippingFormValues) {
+    const minimum = parseAmount(values.freeShippingMinimum);
+    if (!Number.isFinite(minimum) || minimum < 0) {
+      setSaveError("Enter a valid free delivery minimum amount.");
+      return;
+    }
+    setSaveError(null);
+    try {
+      await saveMutation.mutateAsync({ freeDeliveryMinimum: minimum });
+      setSaved(true);
+      window.setTimeout(() => setSaved(false), 3000);
+    } catch {
+      setSaveError("Could not save shipping settings. Try again.");
+    }
   }
 
   return (
@@ -214,7 +233,7 @@ export function ShippingSettings() {
           variant="contained"
           startIcon={<SaveOutlinedIcon />}
           onClick={handleSubmit(onSubmit)}
-          disabled={isSubmitting}
+          disabled={isSubmitting || isLoading || saveMutation.isPending}
           sx={{
             flexShrink: 0,
             bgcolor: ADMIN_ACCENT,
@@ -228,6 +247,12 @@ export function ShippingSettings() {
           Save
         </Button>
       </Box>
+
+      {saveError ? (
+        <Alert severity="error" sx={{ mb: 2, borderRadius: 1 }}>
+          {saveError}
+        </Alert>
+      ) : null}
 
       {saved ? (
         <Alert severity="success" sx={{ mb: 2, borderRadius: 1 }}>

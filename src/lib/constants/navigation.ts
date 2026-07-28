@@ -21,10 +21,7 @@ export const MOBILE_NAV: NavItem[] = [
   { label: "Collections", href: "/collections" },
   { label: "About", href: "/about" },
   { label: "Contact", href: "/contact" },
-  { label: "Account", href: "/account?tab=profile" },
-  { label: "Wishlist", href: "/account?tab=wishlist" },
-  { label: "Orders", href: "/account?tab=orders" },
-  { label: "Cart", href: "/account?tab=cart" },
+  { label: "Cart", href: "/cart" },
 ];
 
 export const FOOTER_SHOP: NavItem[] = [
@@ -41,10 +38,7 @@ export const FOOTER_SHOP: NavItem[] = [
 export const FOOTER_HELP: NavItem[] = [
   { label: "About", href: "/about" },
   { label: "Contact", href: "/contact" },
-  { label: "Account", href: "/account?tab=profile" },
-  { label: "Orders", href: "/account?tab=orders" },
-  { label: "Wishlist", href: "/account?tab=wishlist" },
-  { label: "Cart", href: "/account?tab=cart" },
+  { label: "Cart", href: "/cart" },
   { label: "Checkout", href: "/checkout" },
 ];
 
@@ -52,5 +46,4 @@ export const FOOTER_NAV: NavItem[] = [
   { label: "Shop", href: "/shop" },
   { label: "About", href: "/about" },
   { label: "Contact", href: "/contact" },
-  { label: "Account", href: "/account?tab=profile" },
 ];

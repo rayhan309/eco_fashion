@@ -1,15 +1,10 @@
-import { dummyProducts } from "@/data/dummy/products";
+import { getProductsFromDbOrFallback } from "@/lib/db/readers/products";
 import { getCategories } from "@/services/categories";
 import type { CategoryProductGroup } from "@/types/catalog";
 import type { Product } from "@/types/product";
 
-/**
- * Product service.
- * Today: reads dummy data.
- * Later: replace the body with a database / API call — keep the same return type.
- */
 export async function getProducts(): Promise<Product[]> {
-  return [...dummyProducts];
+  return getProductsFromDbOrFallback();
 }
 
 export async function getProductBySlug(slug: string): Promise<Product | undefined> {
@@ -35,18 +30,15 @@ export async function getCollectionProducts(limit = 8): Promise<Product[]> {
   return products.slice(0, limit);
 }
 
-/** Home: products from every category (default 5 each) */
 export async function getHomeCategoryProducts(
   perCategory = 5,
 ): Promise<CategoryProductGroup[]> {
   const [categories, products] = await Promise.all([getCategories(), getProducts()]);
 
-  return categories
-    .map((category) => ({
-      category,
-      products: products
-        .filter((product) => product.category_slug === category.slug)
-        .slice(0, perCategory),
-    }))
-    .filter((group) => group.products.length > 0);
+  return categories.map((category) => ({
+    category,
+    products: products
+      .filter((product) => product.category_slug === category.slug)
+      .slice(0, perCategory),
+  }));
 }

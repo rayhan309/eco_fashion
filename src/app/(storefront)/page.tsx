@@ -1,24 +1,22 @@
-import { ClientReviewsSection } from "@/components/home/ClientReviewsSection";
-import { CollectionsSection } from "@/components/home/CollectionsSection";
-import { HeroSection } from "@/components/home/HeroSection";
-import { TopCategories } from "@/components/home/TopCategories";
-import { getTopCategories } from "@/services/categories";
-import { getHomeCategoryProducts } from "@/services/products";
-import { getClientReviews } from "@/services/reviews";
+import type { Metadata } from "next";
+import { dehydrate } from "@tanstack/react-query";
+import { HomePageContent } from "@/components/home/HomePageContent";
+import { QueryHydrationBoundary } from "@/components/query/QueryHydrationBoundary";
+import { loadHomePageData } from "@/lib/data/home";
+import { getQueryClient } from "@/lib/queries/get-query-client";
+import { queryKeys } from "@/lib/queries/query-keys";
 
 export default async function HomePage() {
-  const [categories, categoryGroups, reviews] = await Promise.all([
-    getTopCategories(10),
-    getHomeCategoryProducts(5),
-    getClientReviews(6),
-  ]);
+  const queryClient = getQueryClient();
+
+  await queryClient.prefetchQuery({
+    queryKey: queryKeys.home.page(),
+    queryFn: loadHomePageData,
+  });
 
   return (
-    <div className="flex flex-1 flex-col gap-10 md:gap-12">
-      <HeroSection />
-      <TopCategories categories={categories} />
-      <CollectionsSection groups={categoryGroups} />
-      <ClientReviewsSection reviews={reviews} />
-    </div>
+    <QueryHydrationBoundary state={dehydrate(queryClient)}>
+      <HomePageContent />
+    </QueryHydrationBoundary>
   );
 }

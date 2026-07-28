@@ -1,11 +1,6 @@
-import { dummyReviews } from "@/data/dummy/reviews";
+import { getReviewsFromDbOrFallback } from "@/lib/db/readers/reviews";
 import type { ClientReview } from "@/types/review";
 
-/**
- * Reviews service.
- * Today: reads dummy data.
- * Later: replace with a database / API call — keep the same return type.
- */
-export async function getClientReviews(limit = 8): Promise<ClientReview[]> {
-  return dummyReviews.slice(0, limit);
+export async function getClientReviews(limit = 6): Promise<ClientReview[]> {
+  return getReviewsFromDbOrFallback(limit);
 }

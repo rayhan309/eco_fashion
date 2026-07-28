@@ -1,78 +1,64 @@
-import React, { useEffect, useState, type ReactNode } from "react";
-import {
-  createUserWithEmailAndPassword,
-  GoogleAuthProvider,
-  onAuthStateChanged,
-  sendPasswordResetEmail,
-  signInWithEmailAndPassword,
-  signInWithPopup,
-  signOut,
-  updateProfile,
-  type User,
-} from "firebase/auth";
-import { auth } from "@/firebase/firebase.init";
-import { AuthContext } from "./AuthContext";
+"use client";
 
+import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { AuthContext } from "@/context/auth/AuthContext";
+import { api } from "@/lib/axios";
+import type { AdminUserPublic } from "@/lib/validations/admin-user";
+import { z } from "zod";
+import { adminUserPublicSchema } from "@/lib/validations/admin-user";
 
-const goggleProvider = new GoogleAuthProvider();
+const meResponseSchema = z.object({
+  user: adminUserPublicSchema.nullable(),
+});
 
-const AuthProvider = ({ children }: { children: ReactNode }) => {
+const loginResponseSchema = z.object({
+  user: adminUserPublicSchema,
+  redirectTo: z.string(),
+});
+
+export default function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<AdminUserPublic | null>(null);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<User | null>(null);
 
-  const createUser = (email: string, password: string) => {
-    setLoading(true);
-    return createUserWithEmailAndPassword(auth, email, password);
-  };
-
-  const signInUser = (email: string, password: string) => {
-    setLoading(true);
-    return signInWithEmailAndPassword(auth, email, password);
-  };
-
-  const signOutUser = () => signOut(auth);
-
-  const signinWithGoggle = () => {
-    setLoading(true);
-    return signInWithPopup(auth, goggleProvider);
-  };
-
-  const resetPassword = (email: string) => {
-    setLoading(true);
-    return sendPasswordResetEmail(auth, email);
-  };
-
-  const updateUser = (name: string, photo: string) => {
-    setLoading(true);
-    return updateProfile(auth.currentUser!, {
-      displayName: name,
-      photoURL: photo,
-    });
-  };
-
-  // curren user
-  useEffect(() => {
-    const unSubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+  const refresh = useCallback(async () => {
+    try {
+      const { data } = await api.get("/api/auth/me");
+      const parsed = meResponseSchema.safeParse(data);
+      setUser(parsed.success ? parsed.data.user : null);
+    } catch {
+      setUser(null);
+    } finally {
       setLoading(false);
-    });
-
-    return () => unSubscribe();
+    }
   }, []);
 
-  // all auth info
-  const authInfo = {
-    createUser,
-    signInUser,
-    signinWithGoggle,
-    signOutUser,
-    resetPassword,
-    updateUser,
-    user,
-    loading,
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  const login = async (email: string, password: string) => {
+    const { data } = await api.post("/api/auth/login", { email, password });
+    const parsed = loginResponseSchema.parse(data);
+    setUser(parsed.user);
+    return { redirectTo: parsed.redirectTo };
   };
 
-  return <AuthContext value={authInfo}>{children}</AuthContext>;
-};
+  const logout = async () => {
+    await api.post("/api/auth/logout");
+    setUser(null);
+  };
 
-export default AuthProvider;
+  return (
+    <AuthContext
+      value={{
+        user,
+        loading,
+        login,
+        logout,
+        refresh,
+      }}
+    >
+      {children}
+    </AuthContext>
+  );
+}

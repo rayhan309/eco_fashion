@@ -1,15 +1,10 @@
-import { dummyCollections } from "@/data/dummy/collections";
+import { getCollectionsFromDbOrFallback } from "@/lib/db/readers/collections";
 import { getProducts } from "@/services/products";
 import type { Collection } from "@/types/collection";
 import type { Product } from "@/types/product";
 
-/**
- * Collections service.
- * Today: reads dummy data.
- * Later: replace with a database / API call — keep the same return type.
- */
 export async function getCollections(): Promise<Collection[]> {
-  return [...dummyCollections];
+  return getCollectionsFromDbOrFallback();
 }
 
 export async function getCollectionBySlug(slug: string): Promise<Collection | undefined> {
@@ -22,11 +17,7 @@ export async function getCollectionProductsBySlug(slug: string): Promise<Product
     getCollectionBySlug(slug),
     getProducts(),
   ]);
-
   if (!collection) return [];
-
-  const byId = new Map(products.map((product) => [product.id, product]));
-  return collection.productIds
-    .map((id) => byId.get(id))
-    .filter((product): product is Product => Boolean(product));
+  const idSet = new Set(collection.productIds);
+  return products.filter((product) => idSet.has(product.id));
 }

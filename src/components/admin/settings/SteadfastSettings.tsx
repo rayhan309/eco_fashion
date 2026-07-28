@@ -15,12 +15,13 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   SettingsPageHeader,
   SettingsSection,
 } from "@/components/admin/settings/SettingsSection";
+import { useAdminSiteSettings } from "@/hooks/useAdminSiteSettings";
 
 type SteadfastFormValues = {
   enabled: boolean;
@@ -33,6 +34,8 @@ type SteadfastFormValues = {
 
 export function SteadfastSettings() {
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const { data: siteSettings, isLoading, saveMutation } = useAdminSiteSettings();
   const [testState, setTestState] = useState<
     "idle" | "loading" | "success" | "error"
   >("idle");
@@ -44,6 +47,7 @@ export function SteadfastSettings() {
     handleSubmit,
     watch,
     getValues,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<SteadfastFormValues>({
     defaultValues: {
@@ -57,11 +61,33 @@ export function SteadfastSettings() {
     mode: "onBlur",
   });
 
+  useEffect(() => {
+    if (!siteSettings) return;
+    reset({
+      enabled: siteSettings.steadfastEnabled,
+      apiKey: siteSettings.steadfastApiKey,
+      secretKey: siteSettings.steadfastSecretKey,
+      environment: "production",
+      storeId: "",
+      autoCreateConsignment: true,
+    });
+  }, [siteSettings, reset]);
+
   const enabled = watch("enabled");
 
-  function onSubmit(_values: SteadfastFormValues) {
-    setSaved(true);
-    window.setTimeout(() => setSaved(false), 3000);
+  async function onSubmit(values: SteadfastFormValues) {
+    setSaveError(null);
+    try {
+      await saveMutation.mutateAsync({
+        steadfastEnabled: values.enabled,
+        steadfastApiKey: values.apiKey,
+        steadfastSecretKey: values.secretKey,
+      });
+      setSaved(true);
+      window.setTimeout(() => setSaved(false), 3000);
+    } catch {
+      setSaveError("Could not save Steadfast settings. Try again.");
+    }
   }
 
   async function handleTestConnection() {
@@ -93,6 +119,12 @@ export function SteadfastSettings() {
         title="Steadfast"
         description="Connect Steadfast Courier for Bangladesh delivery, consignments, and tracking."
       />
+
+      {saveError ? (
+        <Alert severity="error" sx={{ mb: 2, borderRadius: 1 }}>
+          {saveError}
+        </Alert>
+      ) : null}
 
       {saved ? (
         <Alert severity="success" sx={{ mb: 2, borderRadius: 1 }}>
@@ -245,7 +277,7 @@ export function SteadfastSettings() {
             <Button
               type="submit"
               variant="contained"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isLoading || saveMutation.isPending}
               sx={{
                 bgcolor: "#1f6f5b",
                 px: 3,

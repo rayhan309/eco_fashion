@@ -1,16 +1,11 @@
-import {
-  adminActivities,
-  adminQuickActions,
-  adminRecentOrders,
-  adminStats,
-  adminSummaryCards,
-  revenueByMonth,
-  type AdminActivity,
-  type AdminQuickAction,
-  type AdminRecentOrder,
-  type AdminStat,
-  type AdminSummaryCard,
-  type RevenuePoint,
+import { buildAdminOverviewFromLiveData } from "@/lib/admin/build-overview";
+import type {
+  AdminActivity,
+  AdminQuickAction,
+  AdminRecentOrder,
+  AdminStat,
+  AdminSummaryCard,
+  RevenuePoint,
 } from "@/data/dummy/admin-overview";
 
 export type AdminOverviewData = {
@@ -23,12 +18,5 @@ export type AdminOverviewData = {
 };
 
 export async function getAdminOverview(): Promise<AdminOverviewData> {
-  return {
-    stats: [...adminStats],
-    revenueByMonth: [...revenueByMonth],
-    activities: [...adminActivities],
-    quickActions: [...adminQuickActions],
-    recentOrders: [...adminRecentOrders],
-    summaryCards: [...adminSummaryCards],
-  };
+  return buildAdminOverviewFromLiveData();
 }

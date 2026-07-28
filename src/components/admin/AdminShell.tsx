@@ -19,15 +19,19 @@ import {
   Typography,
 } from "@mui/material";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState, type ReactNode } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { ToastProvider } from "@/context/toast/ToastProvider";
 import {
   ADMIN_ACCENT,
-  ADMIN_NAV,
   ADMIN_SIDEBAR_BG,
   ADMIN_SIDEBAR_WIDTH,
+  filterNavForRole,
   type AdminNavEntry,
 } from "@/lib/constants/admin";
+import { ROLE_HOME } from "@/lib/auth/permissions";
+import { ROLE_LABELS, type AdminRole } from "@/lib/validations/admin-user";
 
 type AdminShellProps = {
   children: ReactNode;
@@ -49,28 +53,47 @@ function isGroupActive(pathname: string, entry: AdminNavEntry) {
   return entry.children.some((child) => isLinkActive(pathname, child.href));
 }
 
+function initials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
 function SidebarContent({
   pathname,
+  nav,
+  userName,
+  userRole,
   onNavigate,
+  onSignOut,
 }: {
   pathname: string;
+  nav: AdminNavEntry[];
+  userName: string;
+  userRole: AdminRole;
   onNavigate?: () => void;
+  onSignOut: () => void;
 }) {
   const defaultOpen = useMemo(() => {
     const open: Record<string, boolean> = {};
-    ADMIN_NAV.forEach((entry) => {
+    nav.forEach((entry) => {
       if (entry.type === "group" && isGroupActive(pathname, entry)) {
         open[entry.label] = true;
       }
     });
     return open;
-  }, [pathname]);
+  }, [pathname, nav]);
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(defaultOpen);
 
   function toggleGroup(label: string) {
     setOpenGroups((prev) => ({ ...prev, [label]: !prev[label] }));
   }
+
+  const homeHref = ROLE_HOME[userRole];
 
   return (
     <Box
@@ -102,7 +125,7 @@ function SidebarContent({
           <Box sx={{ minWidth: 0 }}>
             <Typography
               component={Link}
-              href="/dashboard/admin"
+              href={homeHref}
               onClick={onNavigate}
               sx={{
                 display: "block",
@@ -138,7 +161,7 @@ function SidebarContent({
       </Typography>
 
       <List sx={{ flex: 1, px: 1.25, py: 0, overflowY: "auto" }}>
-        {ADMIN_NAV.map((entry) => {
+        {nav.map((entry) => {
           if (entry.type === "link") {
             const active = isLinkActive(pathname, entry.href);
             const Icon = entry.icon;
@@ -224,7 +247,9 @@ function SidebarContent({
                         <ListItemText
                           primary={child.label}
                           slotProps={{
-                            primary: { sx: { fontSize: "0.8rem", fontWeight: active ? 600 : 400 } },
+                            primary: {
+                              sx: { fontSize: "0.8rem", fontWeight: active ? 600 : 400 },
+                            },
                           }}
                         />
                       </ListItemButton>
@@ -248,25 +273,25 @@ function SidebarContent({
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, mb: 1.5 }}>
           <Avatar sx={{ width: 36, height: 36, bgcolor: ADMIN_ACCENT, fontSize: "0.8rem" }}>
-            SA
+            {initials(userName) || "AD"}
           </Avatar>
           <Box sx={{ minWidth: 0 }}>
             <Typography sx={{ fontSize: "0.85rem", fontWeight: 600, lineHeight: 1.2 }}>
-              Super Admin
+              {userName}
             </Typography>
             <Typography
               sx={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.45)", lineHeight: 1.2 }}
             >
-              Administrator
+              {ROLE_LABELS[userRole]}
             </Typography>
           </Box>
         </Box>
         <Button
-          component={Link}
-          href="/login"
+          type="button"
           fullWidth
           variant="outlined"
           startIcon={<LogoutRoundedIcon sx={{ fontSize: 18 }} />}
+          onClick={onSignOut}
           sx={{
             borderColor: "rgba(239,68,68,0.55)",
             color: "#fca5a5",
@@ -304,9 +329,22 @@ function SidebarContent({
 
 export function AdminShell({ children }: AdminShellProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, logout, loading } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  const role = (user?.role ?? "moderator") as AdminRole;
+  const nav = useMemo(() => filterNavForRole(role), [role]);
+  const displayName = user?.name ?? "Admin";
+
+  async function handleSignOut() {
+    await logout();
+    router.replace("/login");
+    router.refresh();
+  }
+
   return (
+    <ToastProvider>
     <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "#f4f5f7" }}>
       <Box
         component="aside"
@@ -320,7 +358,13 @@ export function AdminShell({ children }: AdminShellProps) {
           borderRight: "1px solid rgba(0,0,0,0.06)",
         }}
       >
-        <SidebarContent pathname={pathname} />
+        <SidebarContent
+          pathname={pathname}
+          nav={nav}
+          userName={displayName}
+          userRole={role}
+          onSignOut={handleSignOut}
+        />
       </Box>
 
       <Drawer
@@ -337,7 +381,14 @@ export function AdminShell({ children }: AdminShellProps) {
           },
         }}
       >
-        <SidebarContent pathname={pathname} onNavigate={() => setMobileOpen(false)} />
+        <SidebarContent
+          pathname={pathname}
+          nav={nav}
+          userName={displayName}
+          userRole={role}
+          onNavigate={() => setMobileOpen(false)}
+          onSignOut={handleSignOut}
+        />
       </Drawer>
 
       <Box
@@ -384,14 +435,14 @@ export function AdminShell({ children }: AdminShellProps) {
 
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
             <Avatar sx={{ width: 36, height: 36, bgcolor: ADMIN_ACCENT, fontSize: "0.8rem" }}>
-              SA
+              {loading ? "…" : initials(displayName) || "AD"}
             </Avatar>
             <Box sx={{ display: { xs: "none", sm: "block" } }}>
               <Typography sx={{ fontSize: "0.85rem", fontWeight: 600, lineHeight: 1.2 }}>
-                Super Admin
+                {displayName}
               </Typography>
               <Typography sx={{ fontSize: "0.7rem", color: "text.secondary", lineHeight: 1.2 }}>
-                Administrator
+                {ROLE_LABELS[role]}
               </Typography>
             </Box>
           </Box>
@@ -411,5 +462,6 @@ export function AdminShell({ children }: AdminShellProps) {
         </Box>
       </Box>
     </Box>
+    </ToastProvider>
   );
 }

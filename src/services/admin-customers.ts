@@ -1,9 +1,5 @@
-import {
-  computeCustomerStats,
-  dummyAdminCustomers,
-  type AdminCustomer,
-  type AdminCustomerStats,
-} from "@/data/dummy/admin-customers";
+import { getAdminCustomersFromDbOrFallback } from "@/lib/db/readers/customers";
+import type { AdminCustomer, AdminCustomerStats } from "@/data/dummy/admin-customers";
 
 export type AdminCustomersData = {
   customers: AdminCustomer[];
@@ -11,11 +7,5 @@ export type AdminCustomersData = {
 };
 
 export async function getAdminCustomers(): Promise<AdminCustomersData> {
-  const customers = [...dummyAdminCustomers].sort(
-    (a, b) => new Date(b.lastOrderAt).getTime() - new Date(a.lastOrderAt).getTime(),
-  );
-  return {
-    customers,
-    stats: computeCustomerStats(customers),
-  };
+  return getAdminCustomersFromDbOrFallback();
 }

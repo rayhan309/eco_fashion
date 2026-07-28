@@ -20,9 +20,10 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { useRef, useState, type ChangeEvent } from "react";
+import { useRef, useState, useEffect, type ChangeEvent } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { SettingsSection } from "@/components/admin/settings/SettingsSection";
+import { useAdminSiteSettings } from "@/hooks/useAdminSiteSettings";
 import { ADMIN_ACCENT } from "@/lib/constants/admin";
 
 const BRAND_PRESETS = [
@@ -84,6 +85,8 @@ function darkenHex(hex: string, amount = 0.12) {
 
 export function GeneralSettings() {
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const { data: siteSettings, isLoading, saveMutation } = useAdminSiteSettings();
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [faviconPreview, setFaviconPreview] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -95,11 +98,31 @@ export function GeneralSettings() {
     handleSubmit,
     watch,
     setValue,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<GeneralSettingsFormValues>({
     defaultValues,
     mode: "onBlur",
   });
+
+  useEffect(() => {
+    if (!siteSettings) return;
+    reset({
+      brandColor: siteSettings.primaryColor,
+      shortDescription: siteSettings.shopShortDescription,
+      tagline: siteSettings.shopTagline,
+      copyrightText: siteSettings.copyrightText,
+      socialLinks: siteSettings.socialLinks.map((link) => ({
+        platform: (SOCIAL_PLATFORMS.includes(link.platform as (typeof SOCIAL_PLATFORMS)[number])
+          ? link.platform
+          : "Instagram") as SocialLinkForm["platform"],
+        url: link.url,
+        visible: link.visible,
+      })),
+    });
+    setLogoPreview(siteSettings.logoUrl || null);
+    setFaviconPreview(siteSettings.faviconUrl || null);
+  }, [siteSettings, reset]);
 
   const { fields, append, remove } = useFieldArray({
     control,
@@ -118,9 +141,32 @@ export function GeneralSettings() {
     setter(URL.createObjectURL(file));
   }
 
-  function onSubmit(_values: GeneralSettingsFormValues) {
-    setSaved(true);
-    window.setTimeout(() => setSaved(false), 3000);
+  async function onSubmit(values: GeneralSettingsFormValues) {
+    setSaveError(null);
+    try {
+      const logoUrl =
+        logoPreview && !logoPreview.startsWith("blob:")
+          ? logoPreview
+          : siteSettings?.logoUrl ?? "";
+      const faviconUrl =
+        faviconPreview && !faviconPreview.startsWith("blob:")
+          ? faviconPreview
+          : siteSettings?.faviconUrl ?? "";
+
+      await saveMutation.mutateAsync({
+        primaryColor: values.brandColor,
+        shopShortDescription: values.shortDescription,
+        shopTagline: values.tagline,
+        copyrightText: values.copyrightText,
+        socialLinks: values.socialLinks,
+        logoUrl,
+        faviconUrl,
+      });
+      setSaved(true);
+      window.setTimeout(() => setSaved(false), 3000);
+    } catch {
+      setSaveError("Could not save settings. Try again.");
+    }
   }
 
   return (
@@ -166,7 +212,7 @@ export function GeneralSettings() {
           variant="contained"
           startIcon={<SaveOutlinedIcon />}
           onClick={handleSubmit(onSubmit)}
-          disabled={isSubmitting}
+          disabled={isSubmitting || isLoading || saveMutation.isPending}
           sx={{
             flexShrink: 0,
             bgcolor: ADMIN_ACCENT,
@@ -179,6 +225,12 @@ export function GeneralSettings() {
           Save
         </Button>
       </Box>
+
+      {saveError ? (
+        <Alert severity="error" sx={{ mb: 2, borderRadius: 1 }}>
+          {saveError}
+        </Alert>
+      ) : null}
 
       {saved ? (
         <Alert severity="success" sx={{ mb: 2, borderRadius: 1 }}>

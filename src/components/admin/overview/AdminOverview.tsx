@@ -1,17 +1,16 @@
 "use client";
 
-import { Box, Typography } from "@mui/material";
-import type { AdminOverviewData } from "@/services/admin";
+import { Box, CircularProgress, Typography } from "@mui/material";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
+import { queryKeys } from "@/lib/queries/query-keys";
+import { fetchAdminOverviewData } from "@/services/store-queries";
 import { QuickActions } from "./QuickActions";
 import { RecentActivity } from "./RecentActivity";
 import { RecentOrdersCard } from "./RecentOrdersCard";
 import { RevenueChart } from "./RevenueChart";
 import { StatCards } from "./StatCards";
 import { SummaryCards } from "./SummaryCards";
-
-type AdminOverviewProps = {
-  data: AdminOverviewData;
-};
 
 function getGreeting() {
   const hour = new Date().getHours();
@@ -29,7 +28,27 @@ function formatToday() {
   });
 }
 
-export function AdminOverview({ data }: AdminOverviewProps) {
+export function AdminOverview() {
+  const { user } = useAuth();
+  const { data, isPending, isError } = useQuery({
+    queryKey: queryKeys.admin.overview(),
+    queryFn: fetchAdminOverviewData,
+  });
+
+  if (isPending) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", py: 10 }}>
+        <CircularProgress size={32} />
+      </Box>
+    );
+  }
+
+  if (isError || !data) {
+    return (
+      <Typography color="error">Could not load dashboard overview.</Typography>
+    );
+  }
+
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5, width: "100%", minWidth: 0 }}>
       <Box>
@@ -41,7 +60,7 @@ export function AdminOverview({ data }: AdminOverviewProps) {
             color: "text.primary",
           }}
         >
-          {getGreeting()}, Super Admin
+          {getGreeting()}, {user?.name?.split(" ")[0] ?? "Admin"}
         </Typography>
         <Typography sx={{ mt: 0.5, fontSize: "0.875rem", color: "text.secondary" }}>
           {formatToday()}

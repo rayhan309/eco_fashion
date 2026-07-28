@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
-import { AdminProductAttributesView } from "@/components/admin";
+import { dehydrate } from "@tanstack/react-query";
+import { QueryHydrationBoundary } from "@/components/query/QueryHydrationBoundary";
+import { AdminProductAttributesPageContent } from "@/components/admin/products/AdminProductAttributesPageContent";
+import { getQueryClient } from "@/lib/queries/get-query-client";
+import { queryKeys } from "@/lib/queries/query-keys";
 import { getProductAttributes } from "@/services/product-attributes";
 
 export const metadata: Metadata = {
@@ -7,6 +11,16 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminProductAttributesPage() {
-  const attributes = await getProductAttributes();
-  return <AdminProductAttributesView attributes={attributes} />;
+  const queryClient = getQueryClient();
+
+  await queryClient.prefetchQuery({
+    queryKey: queryKeys.admin.productAttributes(),
+    queryFn: getProductAttributes,
+  });
+
+  return (
+    <QueryHydrationBoundary state={dehydrate(queryClient)}>
+      <AdminProductAttributesPageContent />
+    </QueryHydrationBoundary>
+  );
 }

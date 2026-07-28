@@ -1,2 +1,2 @@
-/** Auth feature: login, register, and session helpers. */
-export {};
+/** Auth feature: admin dashboard login helpers. */
+export { useAuth } from "@/hooks/useAuth";

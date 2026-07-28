@@ -1,15 +1,12 @@
 import { createContext } from "react";
-import type { User } from "firebase/auth";
+import type { AdminUserPublic } from "@/lib/validations/admin-user";
 
 export type AuthContextValue = {
-  createUser: (email: string, password: string) => Promise<unknown>;
-  signInUser: (email: string, password: string) => Promise<unknown>;
-  signinWithGoggle: () => Promise<unknown>;
-  signOutUser: () => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
-  updateUser: (name: string, photo: string) => Promise<void>;
-  user: User | null;
+  user: AdminUserPublic | null;
   loading: boolean;
+  login: (email: string, password: string) => Promise<{ redirectTo: string }>;
+  logout: () => Promise<void>;
+  refresh: () => Promise<void>;
 };
 
 export const AuthContext = createContext<AuthContextValue | null>(null);

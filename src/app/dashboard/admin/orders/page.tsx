@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
-import { AdminOrdersView } from "@/components/admin";
+import { dehydrate } from "@tanstack/react-query";
+import { QueryHydrationBoundary } from "@/components/query/QueryHydrationBoundary";
+import { AdminOrdersPageContent } from "@/components/admin/orders/AdminOrdersPageContent";
+import { getQueryClient } from "@/lib/queries/get-query-client";
+import { queryKeys } from "@/lib/queries/query-keys";
 import { getAdminOrders } from "@/services/admin-orders";
 
 export const metadata: Metadata = {
@@ -7,6 +11,16 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminOrdersPage() {
-  const orders = await getAdminOrders();
-  return <AdminOrdersView orders={orders} />;
+  const queryClient = getQueryClient();
+
+  await queryClient.prefetchQuery({
+    queryKey: queryKeys.admin.orders(),
+    queryFn: getAdminOrders,
+  });
+
+  return (
+    <QueryHydrationBoundary state={dehydrate(queryClient)}>
+      <AdminOrdersPageContent />
+    </QueryHydrationBoundary>
+  );
 }

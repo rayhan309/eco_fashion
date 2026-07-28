@@ -12,9 +12,10 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { ADMIN_ACCENT } from "@/lib/constants/admin";
+import { useAdminSiteSettings } from "@/hooks/useAdminSiteSettings";
 
 type PlatformValues = {
   pixelId: string;
@@ -127,12 +128,15 @@ function SectionTitle({ dotColor, label }: { dotColor: string; label: string }) 
 
 export function MetaPixelSettings() {
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const { data: siteSettings, isLoading, saveMutation } = useAdminSiteSettings();
 
   const {
     control,
     register,
     handleSubmit,
     watch,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<PixelCapiFormValues>({
     defaultValues: {
@@ -148,15 +152,42 @@ export function MetaPixelSettings() {
     mode: "onBlur",
   });
 
+  useEffect(() => {
+    if (!siteSettings) return;
+    reset({
+      meta: defaultPlatform({
+        pixelId: siteSettings.metaPixelId,
+        browserPixelEnabled: siteSettings.metaPixelEnabled,
+      }),
+      tiktok: defaultPlatform({
+        pixelId: "D922EVDC77UD7MKJJDDB",
+        browserPixelEnabled: true,
+        capiEnabled: true,
+        capiTokenSaved: true,
+        testEventCode: "TEST05989",
+      }),
+    });
+  }, [siteSettings, reset]);
+
   const meta = watch("meta");
   const tiktok = watch("tiktok");
 
   const metaActive = useMemo(() => platformActive(meta), [meta]);
   const tiktokActive = useMemo(() => platformActive(tiktok), [tiktok]);
 
-  function onSubmit(_values: PixelCapiFormValues) {
-    setSaved(true);
-    window.setTimeout(() => setSaved(false), 3000);
+  async function onSubmit(values: PixelCapiFormValues) {
+    setSaveError(null);
+    try {
+      await saveMutation.mutateAsync({
+        metaPixelId: values.meta.pixelId.trim(),
+        metaPixelEnabled:
+          values.meta.browserPixelEnabled && values.meta.pixelId.trim().length > 0,
+      });
+      setSaved(true);
+      window.setTimeout(() => setSaved(false), 3000);
+    } catch {
+      setSaveError("Could not save pixel settings. Try again.");
+    }
   }
 
   return (
@@ -203,7 +234,7 @@ export function MetaPixelSettings() {
           variant="contained"
           startIcon={<SaveOutlinedIcon />}
           onClick={handleSubmit(onSubmit)}
-          disabled={isSubmitting}
+          disabled={isSubmitting || isLoading || saveMutation.isPending}
           sx={{
             flexShrink: 0,
             bgcolor: "#20312d",
@@ -216,6 +247,12 @@ export function MetaPixelSettings() {
           Save
         </Button>
       </Box>
+
+      {saveError ? (
+        <Alert severity="error" sx={{ mb: 2, borderRadius: 1 }}>
+          {saveError}
+        </Alert>
+      ) : null}
 
       {saved ? (
         <Alert severity="success" sx={{ mb: 2, borderRadius: 1 }}>

@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { CartPageView } from "@/components/cart/CartPageView";
 
-export default function CartRedirectPage() {
-  redirect("/account?tab=cart");
+export default function CartPage() {
+  return <CartPageView />;
 }

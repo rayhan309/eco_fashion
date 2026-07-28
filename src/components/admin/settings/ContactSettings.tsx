@@ -12,13 +12,14 @@ import {
   Stack,
   TextField,
 } from "@mui/material";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { BD_REGION_OPTIONS } from "@/lib/constants/locations";
 import {
   SettingsPageHeader,
   SettingsSection,
 } from "@/components/admin/settings/SettingsSection";
+import { useAdminSiteSettings } from "@/hooks/useAdminSiteSettings";
 
 type ContactFormValues = {
   businessName: string;
@@ -35,11 +36,14 @@ const PHONE_PATTERN = /^(\+880|880|0)?1[3-9]\d{8}$/;
 
 export function ContactSettings() {
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const { data: siteSettings, isLoading, saveMutation } = useAdminSiteSettings();
 
   const {
     register,
     handleSubmit,
     control,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<ContactFormValues>({
     defaultValues: {
@@ -55,9 +59,37 @@ export function ContactSettings() {
     mode: "onBlur",
   });
 
-  function onSubmit(_values: ContactFormValues) {
-    setSaved(true);
-    window.setTimeout(() => setSaved(false), 3000);
+  useEffect(() => {
+    if (!siteSettings) return;
+    reset({
+      businessName: siteSettings.businessName,
+      email: siteSettings.contactEmail,
+      phone: siteSettings.contactPhone,
+      address: siteSettings.contactAddress,
+      city: siteSettings.city,
+      supportHours: siteSettings.supportHours,
+      supportNote: siteSettings.supportNote,
+    });
+  }, [siteSettings, reset]);
+
+  async function onSubmit(values: ContactFormValues) {
+    setSaveError(null);
+    try {
+      await saveMutation.mutateAsync({
+        businessName: values.businessName,
+        shopName: values.businessName,
+        contactEmail: values.email,
+        contactPhone: values.phone,
+        contactAddress: values.address,
+        city: values.city,
+        supportHours: values.supportHours,
+        supportNote: values.supportNote,
+      });
+      setSaved(true);
+      window.setTimeout(() => setSaved(false), 3000);
+    } catch {
+      setSaveError("Could not save contact settings. Try again.");
+    }
   }
 
   return (
@@ -66,6 +98,12 @@ export function ContactSettings() {
         title="Contact"
         description="Store contact details used on the contact page, footer, and order emails."
       />
+
+      {saveError ? (
+        <Alert severity="error" sx={{ mb: 2, borderRadius: 1 }}>
+          {saveError}
+        </Alert>
+      ) : null}
 
       {saved ? (
         <Alert severity="success" sx={{ mb: 2, borderRadius: 1 }}>
@@ -188,7 +226,7 @@ export function ContactSettings() {
             <Button
               type="submit"
               variant="contained"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isLoading || saveMutation.isPending}
               sx={{
                 bgcolor: "#1f6f5b",
                 px: 3,

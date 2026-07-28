@@ -169,7 +169,7 @@ export function CartSidebar() {
             </Button>
             <Button
               component={Link}
-              href="/account?tab=cart"
+              href="/cart"
               variant="outlined"
               size="large"
               fullWidth

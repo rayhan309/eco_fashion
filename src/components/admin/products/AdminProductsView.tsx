@@ -7,6 +7,11 @@ import {
   Box,
   Button,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   IconButton,
   Table,
   TableBody,
@@ -19,8 +24,13 @@ import {
   Typography,
 } from "@mui/material";
 import Image from "next/image";
+import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/context/toast/ToastProvider";
 import { ADMIN_ACCENT } from "@/lib/constants/admin";
+import { queryKeys } from "@/lib/queries/query-keys";
+import { deleteProduct } from "@/services/admin-product-mutations";
 import type { Category } from "@/types/category";
 import type { Product } from "@/types/product";
 
@@ -60,9 +70,24 @@ function quantityLabel(product: Product) {
 }
 
 export function AdminProductsView({ products, categories }: AdminProductsViewProps) {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
   const [search, setSearch] = useState("");
   const [categorySlug, setCategorySlug] = useState<string>("all");
   const [page, setPage] = useState(1);
+  const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
+
+  const deleteMutation = useMutation({
+    mutationFn: (productId: string) => deleteProduct(productId),
+    onSuccess: async () => {
+      setDeleteTarget(null);
+      showToast("Product deleted successfully");
+      await queryClient.invalidateQueries({ queryKey: queryKeys.admin.productsCatalog() });
+    },
+    onError: (error) => {
+      showToast(error instanceof Error ? error.message : "Failed to delete product", "error");
+    },
+  });
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -122,6 +147,8 @@ export function AdminProductsView({ products, categories }: AdminProductsViewPro
         </Box>
 
         <Button
+          component={Link}
+          href="/dashboard/admin/products/new"
           variant="contained"
           startIcon={<AddRoundedIcon />}
           sx={{
@@ -355,12 +382,21 @@ export function AdminProductsView({ products, categories }: AdminProductsViewPro
                       </TableCell>
                       <TableCell align="right">
                         <Tooltip title="Edit">
-                          <IconButton size="small" aria-label={`Edit ${product.title}`}>
+                          <IconButton
+                            component={Link}
+                            href={`/dashboard/admin/products/${encodeURIComponent(product.id)}/edit`}
+                            size="small"
+                            aria-label={`Edit ${product.title}`}
+                          >
                             <EditOutlinedIcon sx={{ fontSize: 18, color: ADMIN_ACCENT }} />
                           </IconButton>
                         </Tooltip>
                         <Tooltip title="Delete">
-                          <IconButton size="small" aria-label={`Delete ${product.title}`}>
+                          <IconButton
+                            size="small"
+                            aria-label={`Delete ${product.title}`}
+                            onClick={() => setDeleteTarget(product)}
+                          >
                             <DeleteOutlineRoundedIcon sx={{ fontSize: 18, color: "#dc2626" }} />
                           </IconButton>
                         </Tooltip>
@@ -415,6 +451,35 @@ export function AdminProductsView({ products, categories }: AdminProductsViewPro
           </Box>
         </Box>
       </Box>
+
+      <Dialog open={Boolean(deleteTarget)} onClose={() => !deleteMutation.isPending && setDeleteTarget(null)}>
+        <DialogTitle>Delete product?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {deleteTarget
+              ? `“${deleteTarget.title}” will be removed from the catalog. This cannot be undone.`
+              : ""}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setDeleteTarget(null)}
+            disabled={deleteMutation.isPending}
+            sx={{ textTransform: "none" }}
+          >
+            Cancel
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            disabled={deleteMutation.isPending || !deleteTarget}
+            onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+            sx={{ textTransform: "none" }}
+          >
+            {deleteMutation.isPending ? "Deleting…" : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
