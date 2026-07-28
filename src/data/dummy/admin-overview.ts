@@ -2,9 +2,9 @@ export type AdminStat = {
   id: string;
   label: string;
   value: string;
-  change: string;
-  changeType: "up" | "down" | "neutral";
-  hint: string;
+  sublabel: string;
+  accent: string;
+  sparkline: number[];
 };
 
 export type RevenuePoint = {
@@ -13,10 +13,24 @@ export type RevenuePoint = {
   orders: number;
 };
 
-export type CategorySalesPoint = {
-  name: string;
-  sales: number;
-  fill: string;
+export type AdminActivity = {
+  id: string;
+  message: string;
+  timeAgo: string;
+};
+
+export type AdminQuickAction = {
+  id: string;
+  label: string;
+  href: string;
+};
+
+export type AdminSummaryCard = {
+  id: string;
+  label: string;
+  value: string;
+  sublabel: string;
+  borderColor?: string;
 };
 
 export type AdminRecentOrder = {
@@ -28,51 +42,42 @@ export type AdminRecentOrder = {
   total: number;
 };
 
-export type TopProduct = {
-  id: string;
-  title: string;
-  category: string;
-  sold: number;
-  revenue: number;
-};
-
 export const adminStats: AdminStat[] = [
   {
     id: "revenue",
-    label: "Revenue",
+    label: "Total revenue",
     value: "৳4,28,500",
-    change: "+12.4%",
-    changeType: "up",
-    hint: "vs last month",
+    sublabel: "From paid orders",
+    accent: "#3b82f6",
+    sparkline: [12, 18, 15, 22, 28, 24, 32, 30, 38, 42],
   },
   {
     id: "orders",
-    label: "Orders",
+    label: "Total orders",
     value: "186",
-    change: "+8.1%",
-    changeType: "up",
-    hint: "vs last month",
-  },
-  {
-    id: "customers",
-    label: "Customers",
-    value: "1,248",
-    change: "+5.6%",
-    changeType: "up",
-    hint: "active buyers",
+    sublabel: "All time",
+    accent: "#1f6f5b",
+    sparkline: [8, 12, 10, 14, 18, 16, 20, 22, 24, 26],
   },
   {
     id: "products",
     label: "Products",
     value: "50",
-    change: "0%",
-    changeType: "neutral",
-    hint: "in catalog",
+    sublabel: "In catalog",
+    accent: "#e6a34a",
+    sparkline: [20, 20, 22, 21, 23, 22, 24, 25, 26, 28],
+  },
+  {
+    id: "customers",
+    label: "Customers",
+    value: "1,248",
+    sublabel: "Registered",
+    accent: "#ef4444",
+    sparkline: [40, 42, 45, 48, 52, 55, 58, 62, 65, 68],
   },
 ];
 
 export const revenueByMonth: RevenuePoint[] = [
-  { month: "Jan", revenue: 245000, orders: 92 },
   { month: "Feb", revenue: 268000, orders: 101 },
   { month: "Mar", revenue: 312000, orders: 118 },
   { month: "Apr", revenue: 289000, orders: 109 },
@@ -81,84 +86,52 @@ export const revenueByMonth: RevenuePoint[] = [
   { month: "Jul", revenue: 428500, orders: 186 },
 ];
 
-export const salesByCategory: CategorySalesPoint[] = [
-  { name: "Shirts", sales: 128000, fill: "#1f6f5b" },
-  { name: "Pants", sales: 98000, fill: "#2d8f75" },
-  { name: "Outerwear", sales: 76000, fill: "#e6a34a" },
-  { name: "Shoes", sales: 64000, fill: "#c4843a" },
-  { name: "Accessories", sales: 42500, fill: "#61716a" },
-];
-
-export const adminRecentOrders: AdminRecentOrder[] = [
+export const adminActivities: AdminActivity[] = [
   {
-    id: "ord-a1",
-    orderNumber: "EF-10588",
-    customer: "Rafi Ahmed",
-    date: "2026-07-25",
-    status: "Processing",
-    total: 7200,
+    id: "act-1",
+    message: "Low stock — Slim Chino Pants",
+    timeAgo: "2 days ago",
   },
   {
-    id: "ord-a2",
-    orderNumber: "EF-10571",
-    customer: "Sabbir Hasan",
-    date: "2026-07-24",
-    status: "Shipped",
-    total: 11500,
+    id: "act-2",
+    message: "New order EF-10588 received",
+    timeAgo: "3 days ago",
   },
   {
-    id: "ord-a3",
-    orderNumber: "EF-10544",
-    customer: "Imran Khan",
-    date: "2026-07-22",
-    status: "Processing",
-    total: 5600,
-  },
-  {
-    id: "ord-a4",
-    orderNumber: "EF-10519",
-    customer: "Nayeem Islam",
-    date: "2026-07-18",
-    status: "Shipped",
-    total: 8900,
-  },
-  {
-    id: "ord-a5",
-    orderNumber: "EF-10482",
-    customer: "Arif Rahman",
-    date: "2026-07-12",
-    status: "Delivered",
-    total: 7000,
+    id: "act-3",
+    message: "Classic Oxford Shirt restocked",
+    timeAgo: "5 days ago",
   },
 ];
 
-export const topProducts: TopProduct[] = [
+export const adminQuickActions: AdminQuickAction[] = [
+  { id: "qa-1", label: "Add product", href: "/dashboard/admin/products" },
+  { id: "qa-2", label: "View orders", href: "/dashboard/admin/orders" },
+  { id: "qa-3", label: "Categories", href: "/dashboard/admin/categories" },
+];
+
+export const adminSummaryCards: AdminSummaryCard[] = [
   {
-    id: "tp-1",
-    title: "Classic Oxford Shirt",
-    category: "Shirts",
-    sold: 84,
-    revenue: 126000,
+    id: "pending",
+    label: "Pending orders",
+    value: "12",
+    sublabel: "Awaiting fulfillment",
+    borderColor: "#e6a34a",
   },
   {
-    id: "tp-2",
-    title: "Slim Chino Pants",
-    category: "Pants",
-    sold: 71,
-    revenue: 106500,
+    id: "aov",
+    label: "Avg. order value",
+    value: "৳2,304",
+    sublabel: "Per completed order",
   },
   {
-    id: "tp-3",
-    title: "Structured Blazer",
-    category: "Outerwear",
-    sold: 38,
-    revenue: 152000,
-  },
-  {
-    id: "tp-4",
-    title: "Leather Belt",
-    category: "Accessories",
-    sold: 96,
-    revenue: 48000,
+    id: "stock",
+    label: "Out of stock",
+    value: "3",
+    sublabel: "Products need restock",
+    borderColor: "#ef4444",
   },
 ];
+
+/** Empty state for overview — set to [] to match empty recent orders UI */
+export const adminRecentOrders: AdminRecentOrder[] = [];

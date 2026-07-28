@@ -1,44 +1,52 @@
 "use client";
 
+import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
+import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
-import NotificationsNoneRoundedIcon from "@mui/icons-material/NotificationsNoneRounded";
-import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
-import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
+import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
 import {
-  AppBar,
   Avatar,
   Box,
-  Divider,
+  Button,
+  Collapse,
   Drawer,
   IconButton,
-  InputAdornment,
   List,
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  TextField,
-  Toolbar,
   Typography,
 } from "@mui/material";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import {
+  ADMIN_ACCENT,
   ADMIN_NAV,
+  ADMIN_SIDEBAR_BG,
   ADMIN_SIDEBAR_WIDTH,
-  ADMIN_TOPBAR_HEIGHT,
+  type AdminNavEntry,
 } from "@/lib/constants/admin";
 
 type AdminShellProps = {
   children: ReactNode;
 };
 
-function isNavActive(pathname: string, href: string) {
-  if (href === "/dashboard/admin") {
+function isLinkActive(pathname: string, href: string) {
+  if (href === "/dashboard/admin") return pathname === href;
+  if (href === "/dashboard/admin/settings") {
+    return pathname === href;
+  }
+  if (href === "/dashboard/admin/products") {
     return pathname === href;
   }
   return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function isGroupActive(pathname: string, entry: AdminNavEntry) {
+  if (entry.type === "link") return isLinkActive(pathname, entry.href);
+  return entry.children.some((child) => isLinkActive(pathname, child.href));
 }
 
 function SidebarContent({
@@ -48,120 +56,247 @@ function SidebarContent({
   pathname: string;
   onNavigate?: () => void;
 }) {
+  const defaultOpen = useMemo(() => {
+    const open: Record<string, boolean> = {};
+    ADMIN_NAV.forEach((entry) => {
+      if (entry.type === "group" && isGroupActive(pathname, entry)) {
+        open[entry.label] = true;
+      }
+    });
+    return open;
+  }, [pathname]);
+
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(defaultOpen);
+
+  function toggleGroup(label: string) {
+    setOpenGroups((prev) => ({ ...prev, [label]: !prev[label] }));
+  }
+
   return (
     <Box
       sx={{
         display: "flex",
         flexDirection: "column",
         height: "100%",
-        bgcolor: "#20312d",
+        bgcolor: ADMIN_SIDEBAR_BG,
         color: "#fff",
       }}
     >
-      <Box sx={{ px: 2.5, py: 2.25 }}>
-        <Typography
-          component={Link}
-          href="/dashboard/admin"
-          onClick={onNavigate}
-          sx={{
-            display: "block",
-            fontWeight: 700,
-            fontSize: "1.15rem",
-            letterSpacing: "-0.04em",
-            color: "#fff",
-            textDecoration: "none",
-          }}
-        >
-          Eco Fashion
-        </Typography>
-        <Typography
-          sx={{
-            mt: 0.35,
-            fontSize: "0.7rem",
-            fontWeight: 600,
-            letterSpacing: "0.14em",
-            textTransform: "uppercase",
-            color: "rgba(255,255,255,0.5)",
-          }}
-        >
-          Admin panel
-        </Typography>
-      </Box>
-
-      <Divider sx={{ borderColor: "rgba(255,255,255,0.08)" }} />
-
-      <List sx={{ flex: 1, px: 1.25, py: 1.5 }}>
-        {ADMIN_NAV.map((item) => {
-          const active = isNavActive(pathname, item.href);
-          const Icon = item.icon;
-
-          return (
-            <ListItemButton
-              key={item.href}
+      <Box sx={{ px: 2, py: 2.5 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
+          <Box
+            sx={{
+              width: 40,
+              height: 40,
+              borderRadius: 1,
+              bgcolor: ADMIN_ACCENT,
+              display: "grid",
+              placeItems: "center",
+              fontWeight: 800,
+              fontSize: "0.75rem",
+              letterSpacing: "0.04em",
+            }}
+          >
+            EF
+          </Box>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography
               component={Link}
-              href={item.href}
+              href="/dashboard/admin"
               onClick={onNavigate}
-              selected={active}
               sx={{
-                mb: 0.5,
-                borderRadius: 1,
-                color: active ? "#fff" : "rgba(255,255,255,0.72)",
-                bgcolor: active ? "rgba(31,111,91,0.55)" : "transparent",
-                "&:hover": {
-                  bgcolor: active
-                    ? "rgba(31,111,91,0.65)"
-                    : "rgba(255,255,255,0.06)",
-                },
-                "&.Mui-selected": {
-                  bgcolor: "rgba(31,111,91,0.55)",
-                  "&:hover": {
-                    bgcolor: "rgba(31,111,91,0.65)",
-                  },
-                },
+                display: "block",
+                fontWeight: 700,
+                fontSize: "0.95rem",
+                color: "#fff",
+                textDecoration: "none",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
               }}
             >
-              <ListItemIcon sx={{ minWidth: 40, color: "inherit" }}>
-                <Icon sx={{ fontSize: 20 }} />
-              </ListItemIcon>
-              <ListItemText
-                primary={item.label}
-                slotProps={{
-                  primary: {
-                    sx: {
-                      fontSize: "0.9rem",
-                      fontWeight: active ? 700 : 500,
-                    },
-                  },
+              Eco Fashion
+            </Typography>
+            <Typography sx={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.45)" }}>
+              Admin
+            </Typography>
+          </Box>
+        </Box>
+      </Box>
+
+      <Typography
+        sx={{
+          px: 2.5,
+          pb: 1,
+          fontSize: "0.65rem",
+          fontWeight: 700,
+          letterSpacing: "0.14em",
+          color: "rgba(255,255,255,0.35)",
+        }}
+      >
+        MAIN MENU
+      </Typography>
+
+      <List sx={{ flex: 1, px: 1.25, py: 0, overflowY: "auto" }}>
+        {ADMIN_NAV.map((entry) => {
+          if (entry.type === "link") {
+            const active = isLinkActive(pathname, entry.href);
+            const Icon = entry.icon;
+            return (
+              <ListItemButton
+                key={entry.href}
+                component={Link}
+                href={entry.href}
+                onClick={onNavigate}
+                sx={{
+                  mb: 0.35,
+                  borderRadius: 1,
+                  py: 1,
+                  color: active ? "#fff" : "rgba(255,255,255,0.72)",
+                  bgcolor: active ? "rgba(255,255,255,0.08)" : "transparent",
+                  borderLeft: active ? `3px solid ${ADMIN_ACCENT}` : "3px solid transparent",
+                  "&:hover": { bgcolor: "rgba(255,255,255,0.06)" },
                 }}
-              />
-            </ListItemButton>
+              >
+                <ListItemIcon sx={{ minWidth: 36, color: active ? ADMIN_ACCENT : "inherit" }}>
+                  <Icon sx={{ fontSize: 20 }} />
+                </ListItemIcon>
+                <ListItemText
+                  primary={entry.label}
+                  slotProps={{
+                    primary: { sx: { fontSize: "0.875rem", fontWeight: active ? 600 : 500 } },
+                  }}
+                />
+              </ListItemButton>
+            );
+          }
+
+          const Icon = entry.icon;
+          const open = openGroups[entry.label] ?? false;
+          const groupActive = isGroupActive(pathname, entry);
+
+          return (
+            <Box key={entry.label}>
+              <ListItemButton
+                onClick={() => toggleGroup(entry.label)}
+                sx={{
+                  mb: 0.35,
+                  borderRadius: 1,
+                  py: 1,
+                  color: groupActive ? "#fff" : "rgba(255,255,255,0.72)",
+                  bgcolor: groupActive ? "rgba(255,255,255,0.06)" : "transparent",
+                  "&:hover": { bgcolor: "rgba(255,255,255,0.06)" },
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 36, color: groupActive ? ADMIN_ACCENT : "inherit" }}>
+                  <Icon sx={{ fontSize: 20 }} />
+                </ListItemIcon>
+                <ListItemText
+                  primary={entry.label}
+                  slotProps={{
+                    primary: { sx: { fontSize: "0.875rem", fontWeight: 500 } },
+                  }}
+                />
+                {open ? (
+                  <ExpandLessRoundedIcon sx={{ fontSize: 18, opacity: 0.6 }} />
+                ) : (
+                  <ExpandMoreRoundedIcon sx={{ fontSize: 18, opacity: 0.6 }} />
+                )}
+              </ListItemButton>
+              <Collapse in={open} timeout="auto" unmountOnExit>
+                <List disablePadding sx={{ pl: 2, pb: 0.5 }}>
+                  {entry.children.map((child) => {
+                    const active = isLinkActive(pathname, child.href);
+                    return (
+                      <ListItemButton
+                        key={`${entry.label}-${child.label}`}
+                        component={Link}
+                        href={child.href}
+                        onClick={onNavigate}
+                        sx={{
+                          borderRadius: 1,
+                          py: 0.75,
+                          mb: 0.25,
+                          color: active ? "#fff" : "rgba(255,255,255,0.55)",
+                          "&:hover": { bgcolor: "rgba(255,255,255,0.05)" },
+                        }}
+                      >
+                        <ListItemText
+                          primary={child.label}
+                          slotProps={{
+                            primary: { sx: { fontSize: "0.8rem", fontWeight: active ? 600 : 400 } },
+                          }}
+                        />
+                      </ListItemButton>
+                    );
+                  })}
+                </List>
+              </Collapse>
+            </Box>
           );
         })}
       </List>
 
-      <Box sx={{ px: 1.25, pb: 2 }}>
-        <Divider sx={{ borderColor: "rgba(255,255,255,0.08)", mb: 1.5 }} />
-        <ListItemButton
+      <Box
+        sx={{
+          m: 1.5,
+          p: 1.5,
+          borderRadius: 1,
+          bgcolor: "rgba(0,0,0,0.2)",
+          border: "1px solid rgba(255,255,255,0.06)",
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, mb: 1.5 }}>
+          <Avatar sx={{ width: 36, height: 36, bgcolor: ADMIN_ACCENT, fontSize: "0.8rem" }}>
+            SA
+          </Avatar>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography sx={{ fontSize: "0.85rem", fontWeight: 600, lineHeight: 1.2 }}>
+              Super Admin
+            </Typography>
+            <Typography
+              sx={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.45)", lineHeight: 1.2 }}
+            >
+              Administrator
+            </Typography>
+          </Box>
+        </Box>
+        <Button
+          component={Link}
+          href="/login"
+          fullWidth
+          variant="outlined"
+          startIcon={<LogoutRoundedIcon sx={{ fontSize: 18 }} />}
+          sx={{
+            borderColor: "rgba(239,68,68,0.55)",
+            color: "#fca5a5",
+            py: 0.85,
+            fontSize: "0.8rem",
+            fontWeight: 600,
+            "&:hover": {
+              borderColor: "#ef4444",
+              bgcolor: "rgba(239,68,68,0.12)",
+            },
+          }}
+        >
+          Sign out
+        </Button>
+        <Button
           component={Link}
           href="/"
           target="_blank"
-          rel="noopener noreferrer"
+          fullWidth
+          startIcon={<StorefrontOutlinedIcon sx={{ fontSize: 18 }} />}
           sx={{
-            borderRadius: 1,
-            color: "rgba(255,255,255,0.72)",
-            "&:hover": { bgcolor: "rgba(255,255,255,0.06)" },
+            mt: 1,
+            color: "rgba(255,255,255,0.65)",
+            fontSize: "0.75rem",
+            justifyContent: "flex-start",
+            "&:hover": { bgcolor: "rgba(255,255,255,0.05)" },
           }}
         >
-          <ListItemIcon sx={{ minWidth: 40, color: "inherit" }}>
-            <OpenInNewRoundedIcon sx={{ fontSize: 20 }} />
-          </ListItemIcon>
-          <ListItemText
-            primary="View storefront"
-            slotProps={{
-              primary: { sx: { fontSize: "0.875rem", fontWeight: 500 } },
-            }}
-          />
-        </ListItemButton>
+          View storefront
+        </Button>
       </Box>
     </Box>
   );
@@ -171,26 +306,18 @@ export function AdminShell({ children }: AdminShellProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const activeItem =
-    ADMIN_NAV.find((item) => isNavActive(pathname, item.href)) ?? ADMIN_NAV[0];
-
   return (
-    <Box
-      sx={{
-        display: "flex",
-        minHeight: "100vh",
-        bgcolor: "#f6f3ed",
-      }}
-    >
+    <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "#f4f5f7" }}>
       <Box
         component="aside"
         sx={{
           width: ADMIN_SIDEBAR_WIDTH,
           flexShrink: 0,
-          display: { xs: "none", md: "block" },
+          display: { xs: "none", lg: "block" },
           position: "fixed",
           inset: "0 auto 0 0",
           zIndex: (theme) => theme.zIndex.drawer,
+          borderRight: "1px solid rgba(0,0,0,0.06)",
         }}
       >
         <SidebarContent pathname={pathname} />
@@ -202,7 +329,7 @@ export function AdminShell({ children }: AdminShellProps) {
         onClose={() => setMobileOpen(false)}
         ModalProps={{ keepMounted: true }}
         sx={{
-          display: { xs: "block", md: "none" },
+          display: { xs: "block", lg: "none" },
           "& .MuiDrawer-paper": {
             width: ADMIN_SIDEBAR_WIDTH,
             boxSizing: "border-box",
@@ -210,10 +337,7 @@ export function AdminShell({ children }: AdminShellProps) {
           },
         }}
       >
-        <SidebarContent
-          pathname={pathname}
-          onNavigate={() => setMobileOpen(false)}
-        />
+        <SidebarContent pathname={pathname} onNavigate={() => setMobileOpen(false)} />
       </Drawer>
 
       <Box
@@ -222,173 +346,65 @@ export function AdminShell({ children }: AdminShellProps) {
           minWidth: 0,
           display: "flex",
           flexDirection: "column",
-          ml: { xs: 0, md: `${ADMIN_SIDEBAR_WIDTH}px` },
+          ml: { xs: 0, lg: `${ADMIN_SIDEBAR_WIDTH}px` },
+          width: { xs: "100%", lg: `calc(100% - ${ADMIN_SIDEBAR_WIDTH}px)` },
         }}
       >
-        <AppBar
-          position="sticky"
-          elevation={0}
-          color="transparent"
+        <Box
+          component="header"
           sx={{
+            position: "sticky",
             top: 0,
             zIndex: (theme) => theme.zIndex.appBar,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "flex-end",
+            gap: 1,
+            px: { xs: 2, sm: 3 },
+            py: 1.5,
+            minHeight: 56,
+            bgcolor: "#fff",
             borderBottom: "1px solid",
-            borderColor: "divider",
-            bgcolor: "rgba(255, 253, 248, 0.9)",
-            backdropFilter: "blur(14px)",
+            borderColor: "rgba(0,0,0,0.06)",
           }}
         >
-          <Toolbar
+          <IconButton
+            aria-label="Open menu"
+            onClick={() => setMobileOpen(true)}
             sx={{
-              minHeight: `${ADMIN_TOPBAR_HEIGHT}px !important`,
-              px: { xs: 2, sm: 3 },
-              gap: 1.5,
+              mr: "auto",
+              display: { lg: "none" },
+              border: "1px solid",
+              borderColor: "divider",
+              borderRadius: 1,
             }}
           >
-            <IconButton
-              aria-label="Open menu"
-              onClick={() => setMobileOpen(true)}
-              sx={{
-                display: { xs: "inline-flex", md: "none" },
-                border: "1px solid",
-                borderColor: "divider",
-                borderRadius: 1,
-              }}
-            >
-              <MenuRoundedIcon />
-            </IconButton>
+            <MenuRoundedIcon />
+          </IconButton>
 
-            <Box sx={{ minWidth: 0, flex: { xs: 1, sm: "unset" } }}>
-              <Typography
-                variant="subtitle2"
-                sx={{
-                  color: "text.secondary",
-                  fontWeight: 600,
-                  letterSpacing: "0.06em",
-                  textTransform: "uppercase",
-                  fontSize: "0.65rem",
-                  lineHeight: 1.2,
-                }}
-              >
-                Dashboard
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
+            <Avatar sx={{ width: 36, height: 36, bgcolor: ADMIN_ACCENT, fontSize: "0.8rem" }}>
+              SA
+            </Avatar>
+            <Box sx={{ display: { xs: "none", sm: "block" } }}>
+              <Typography sx={{ fontSize: "0.85rem", fontWeight: 600, lineHeight: 1.2 }}>
+                Super Admin
               </Typography>
-              <Typography
-                variant="h6"
-                sx={{
-                  fontWeight: 700,
-                  letterSpacing: "-0.02em",
-                  lineHeight: 1.2,
-                  fontSize: { xs: "1rem", sm: "1.1rem" },
-                }}
-              >
-                {activeItem?.label ?? "Admin"}
+              <Typography sx={{ fontSize: "0.7rem", color: "text.secondary", lineHeight: 1.2 }}>
+                Administrator
               </Typography>
             </Box>
-
-            <TextField
-              size="small"
-              placeholder="Search..."
-              aria-label="Search admin"
-              sx={{
-                display: { xs: "none", sm: "block" },
-                ml: { sm: 2 },
-                flex: 1,
-                maxWidth: 360,
-                "& .MuiOutlinedInput-root": {
-                  bgcolor: "rgba(246, 243, 237, 0.85)",
-                },
-              }}
-              slotProps={{
-                input: {
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchRoundedIcon sx={{ fontSize: 18, color: "text.secondary" }} />
-                    </InputAdornment>
-                  ),
-                },
-              }}
-            />
-
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, ml: "auto" }}>
-              <IconButton
-                aria-label="Notifications"
-                sx={{
-                  border: "1px solid",
-                  borderColor: "divider",
-                  borderRadius: 1,
-                }}
-              >
-                <NotificationsNoneRoundedIcon />
-              </IconButton>
-
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1,
-                  pl: { xs: 0.5, sm: 1 },
-                  pr: { xs: 0, sm: 0.5 },
-                  py: 0.5,
-                  borderRadius: 1,
-                }}
-              >
-                <Avatar
-                  sx={{
-                    width: 34,
-                    height: 34,
-                    bgcolor: "#1f6f5b",
-                    fontSize: "0.85rem",
-                    fontWeight: 700,
-                  }}
-                >
-                  A
-                </Avatar>
-                <Box sx={{ display: { xs: "none", md: "block" }, minWidth: 0 }}>
-                  <Typography
-                    sx={{
-                      fontSize: "0.8rem",
-                      fontWeight: 700,
-                      lineHeight: 1.2,
-                      color: "text.primary",
-                    }}
-                  >
-                    Admin
-                  </Typography>
-                  <Typography
-                    sx={{
-                      fontSize: "0.7rem",
-                      color: "text.secondary",
-                      lineHeight: 1.2,
-                    }}
-                  >
-                    hello@ecofashion.com
-                  </Typography>
-                </Box>
-              </Box>
-
-              <IconButton
-                aria-label="Log out"
-                component={Link}
-                href="/login"
-                sx={{
-                  display: { xs: "none", sm: "inline-flex" },
-                  border: "1px solid",
-                  borderColor: "divider",
-                  borderRadius: 1,
-                }}
-              >
-                <LogoutRoundedIcon fontSize="small" />
-              </IconButton>
-            </Box>
-          </Toolbar>
-        </AppBar>
+          </Box>
+        </Box>
 
         <Box
           component="main"
           sx={{
             flex: 1,
-            p: { xs: 2, sm: 3 },
+            p: { xs: 2, sm: 2.5, md: 3 },
             width: "100%",
+            maxWidth: "100%",
+            boxSizing: "border-box",
           }}
         >
           {children}

@@ -1,30 +1,34 @@
 import {
+  adminActivities,
+  adminQuickActions,
   adminRecentOrders,
   adminStats,
+  adminSummaryCards,
   revenueByMonth,
-  salesByCategory,
-  topProducts,
+  type AdminActivity,
+  type AdminQuickAction,
   type AdminRecentOrder,
   type AdminStat,
-  type CategorySalesPoint,
+  type AdminSummaryCard,
   type RevenuePoint,
-  type TopProduct,
 } from "@/data/dummy/admin-overview";
 
 export type AdminOverviewData = {
   stats: AdminStat[];
   revenueByMonth: RevenuePoint[];
-  salesByCategory: CategorySalesPoint[];
+  activities: AdminActivity[];
+  quickActions: AdminQuickAction[];
   recentOrders: AdminRecentOrder[];
-  topProducts: TopProduct[];
+  summaryCards: AdminSummaryCard[];
 };
 
 export async function getAdminOverview(): Promise<AdminOverviewData> {
   return {
     stats: [...adminStats],
     revenueByMonth: [...revenueByMonth],
-    salesByCategory: [...salesByCategory],
+    activities: [...adminActivities],
+    quickActions: [...adminQuickActions],
     recentOrders: [...adminRecentOrders],
-    topProducts: [...topProducts],
+    summaryCards: [...adminSummaryCards],
   };
 }

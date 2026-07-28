@@ -1,46 +1,50 @@
-import React, { useEffect, useState } from "react";
-import { createUserWithEmailAndPassword, GoogleAuthProvider, onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signInWithPopup, signOut, updateProfile } from "firebase/auth";
+import React, { useEffect, useState, type ReactNode } from "react";
+import {
+  createUserWithEmailAndPassword,
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  signOut,
+  updateProfile,
+  type User,
+} from "firebase/auth";
 import { auth } from "@/firebase/firebase.init";
 import { AuthContext } from "./AuthContext";
 
 
 const goggleProvider = new GoogleAuthProvider();
 
-const AuthProvider = ({ children }) => {
+const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<User | null>(null);
 
-  // createUser
-  const createUser = (email, password) => {
+  const createUser = (email: string, password: string) => {
     setLoading(true);
     return createUserWithEmailAndPassword(auth, email, password);
   };
 
-  // signInUser
-  const signInUser = (email, password) => {
+  const signInUser = (email: string, password: string) => {
     setLoading(true);
     return signInWithEmailAndPassword(auth, email, password);
   };
 
-  // signOutUser
   const signOutUser = () => signOut(auth);
 
-  // goglle sign in
   const signinWithGoggle = () => {
     setLoading(true);
     return signInWithPopup(auth, goggleProvider);
   };
 
-  // reset password
-  const resetPassword = (email) => {
+  const resetPassword = (email: string) => {
     setLoading(true);
     return sendPasswordResetEmail(auth, email);
   };
 
-  // updateUser
-  const updateUser = (name, photo) => {
+  const updateUser = (name: string, photo: string) => {
     setLoading(true);
-    return updateProfile(auth.currentUser, {
+    return updateProfile(auth.currentUser!, {
       displayName: name,
       photoURL: photo,
     });

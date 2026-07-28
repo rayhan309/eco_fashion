@@ -1,14 +1,10 @@
 import type { Metadata } from "next";
+import { GeneralSettings } from "@/components/admin/settings";
 
 export const metadata: Metadata = {
-  title: "Settings",
+  title: "General",
 };
 
 export default function AdminSettingsPage() {
-  return (
-    <div>
-      <h1>Settings</h1>
-      <p>Admin settings page.</p>
-    </div>
-  );
+  return <GeneralSettings />;
 }

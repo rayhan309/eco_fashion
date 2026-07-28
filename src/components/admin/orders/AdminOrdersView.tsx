@@ -1,0 +1,549 @@
+"use client";
+
+import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
+import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import LocalShippingOutlinedIcon from "@mui/icons-material/LocalShippingOutlined";
+import PhoneOutlinedIcon from "@mui/icons-material/PhoneOutlined";
+import SellOutlinedIcon from "@mui/icons-material/SellOutlined";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import WhatsAppIcon from "@mui/icons-material/WhatsApp";
+import {
+  Box,
+  Button,
+  Checkbox,
+  Chip,
+  FormControl,
+  IconButton,
+  InputLabel,
+  MenuItem,
+  Select,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Tooltip,
+  Typography,
+} from "@mui/material";
+import { useMemo, useState } from "react";
+import {
+  ADMIN_ORDER_STATUS_FILTERS,
+  ADMIN_ORDER_STATUS_LABELS,
+  type AdminOrder,
+  type AdminOrderStatus,
+} from "@/data/dummy/admin-orders";
+import { ADMIN_ACCENT } from "@/lib/constants/admin";
+
+const PAGE_SIZE = 10;
+
+const DATE_RANGES = [
+  { value: "lifetime", label: "Lifetime" },
+  { value: "today", label: "Today" },
+  { value: "7d", label: "Last 7 days" },
+  { value: "30d", label: "Last 30 days" },
+  { value: "month", label: "This month" },
+] as const;
+
+type DateRange = (typeof DATE_RANGES)[number]["value"];
+
+const statusChipSx: Record<
+  AdminOrderStatus,
+  { bgcolor: string; color: string; border: string }
+> = {
+  new_order: { bgcolor: "#ecfdf5", color: "#047857", border: "#a7f3d0" },
+  order_confirmed: { bgcolor: "#eff6ff", color: "#1d4ed8", border: "#bfdbfe" },
+  entered_steadfast: { bgcolor: "#f0fdf4", color: "#15803d", border: "#bbf7d0" },
+  no_response: { bgcolor: "#f8fafc", color: "#475569", border: "#e2e8f0" },
+  will_inform_later: { bgcolor: "#fffbeb", color: "#b45309", border: "#fde68a" },
+  follow_up_needed: { bgcolor: "#fef3c7", color: "#92400e", border: "#fcd34d" },
+  out_for_delivery: { bgcolor: "#ecfeff", color: "#0e7490", border: "#a5f3fc" },
+  scammer_fraudulent: { bgcolor: "#fef2f2", color: "#b91c1c", border: "#fecaca" },
+  delivered: { bgcolor: "#f1f5f9", color: "#334155", border: "#e2e8f0" },
+  cancelled: { bgcolor: "#fef2f2", color: "#991b1b", border: "#fecaca" },
+};
+
+function formatBdt(value: number) {
+  return `৳${value.toLocaleString("en-BD")}`;
+}
+
+function formatOrderDate(iso: string) {
+  return new Date(iso).toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+function phoneToWhatsApp(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  const normalized = digits.startsWith("880") ? digits : `88${digits.replace(/^0/, "")}`;
+  return `https://wa.me/${normalized}`;
+}
+
+function phoneToTel(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  return `tel:+${digits.startsWith("880") ? digits : `88${digits.replace(/^0/, "")}`}`;
+}
+
+function matchesDateRange(createdAt: string, range: DateRange) {
+  if (range === "lifetime") return true;
+  const date = new Date(createdAt);
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (range === "today") return date >= startOfToday;
+  if (range === "7d") {
+    const from = new Date(startOfToday);
+    from.setDate(from.getDate() - 7);
+    return date >= from;
+  }
+  if (range === "30d") {
+    const from = new Date(startOfToday);
+    from.setDate(from.getDate() - 30);
+    return date >= from;
+  }
+  if (range === "month") {
+    return (
+      date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear()
+    );
+  }
+  return true;
+}
+
+type AdminOrdersViewProps = {
+  orders: AdminOrder[];
+};
+
+export function AdminOrdersView({ orders }: AdminOrdersViewProps) {
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | AdminOrderStatus>("all");
+  const [dateRange, setDateRange] = useState<DateRange>("lifetime");
+  const [page, setPage] = useState(1);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return orders.filter((order) => {
+      if (statusFilter !== "all" && order.status !== statusFilter) return false;
+      if (!matchesDateRange(order.createdAt, dateRange)) return false;
+      if (!q) return true;
+      return (
+        order.orderNumber.toLowerCase().includes(q) ||
+        order.customerName.toLowerCase().includes(q) ||
+        order.customerPhone.includes(q.replace(/\s/g, ""))
+      );
+    });
+  }, [orders, search, statusFilter, dateRange]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageStart = (currentPage - 1) * PAGE_SIZE;
+  const pageOrders = filtered.slice(pageStart, pageStart + PAGE_SIZE);
+
+  const allPageSelected =
+    pageOrders.length > 0 && pageOrders.every((o) => selected.has(o.id));
+
+  function toggleAllPage() {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (allPageSelected) {
+        pageOrders.forEach((o) => next.delete(o.id));
+      } else {
+        pageOrders.forEach((o) => next.add(o.id));
+      }
+      return next;
+    });
+  }
+
+  function toggleRow(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function copyPhone(phone: string) {
+    try {
+      await navigator.clipboard.writeText(phone);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  return (
+    <Box sx={{ width: "100%", minWidth: 0 }}>
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: { xs: "column", md: "row" },
+          alignItems: { md: "flex-start" },
+          justifyContent: "space-between",
+          gap: 2,
+          mb: 2.5,
+        }}
+      >
+        <Box>
+          <Typography
+            sx={{
+              fontSize: "0.7rem",
+              fontWeight: 700,
+              letterSpacing: "0.14em",
+              textTransform: "uppercase",
+              color: ADMIN_ACCENT,
+            }}
+          >
+            Fulfillment
+          </Typography>
+          <Typography
+            sx={{
+              mt: 0.5,
+              fontSize: { xs: "1.35rem", sm: "1.5rem" },
+              fontWeight: 700,
+              letterSpacing: "-0.02em",
+            }}
+          >
+            Orders
+          </Typography>
+          <Typography sx={{ mt: 0.5, fontSize: "0.9rem", color: "text.secondary" }}>
+            View, update status, and manage customer orders.
+          </Typography>
+        </Box>
+
+        <Box sx={{ display: "flex", flexDirection: "column", alignItems: { md: "flex-end" } }}>
+          <FormControl size="small" sx={{ minWidth: 160 }}>
+            <InputLabel id="orders-date-range">Filter by date</InputLabel>
+            <Select
+              labelId="orders-date-range"
+              label="Filter by date"
+              value={dateRange}
+              onChange={(e) => {
+                setDateRange(e.target.value as DateRange);
+                setPage(1);
+              }}
+            >
+              {DATE_RANGES.map((r) => (
+                <MenuItem key={r.value} value={r.value}>
+                  {r.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <Typography sx={{ mt: 0.75, fontSize: "0.8rem", color: "text.secondary" }}>
+            {filtered.length} total order{filtered.length === 1 ? "" : "s"}
+          </Typography>
+        </Box>
+      </Box>
+
+      <Box
+        sx={{
+          borderRadius: 2,
+          border: "1px solid",
+          borderColor: "rgba(0,0,0,0.06)",
+          bgcolor: "#fff",
+          boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+          overflow: "hidden",
+        }}
+      >
+        <Box sx={{ p: 2, borderBottom: "1px solid", borderColor: "rgba(0,0,0,0.06)" }}>
+          <TextField
+            fullWidth
+            size="small"
+            placeholder="Search by order ID, name, or phone..."
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+            sx={{ width: "100%", bgcolor: "#f8fafc" }}
+          />
+
+          <Box sx={{ mt: 1.5, display: "flex", flexWrap: "wrap", gap: 1 }}>
+            {ADMIN_ORDER_STATUS_FILTERS.map((filter) => {
+              const active = statusFilter === filter.id;
+              return (
+                <Button
+                  key={filter.id}
+                  size="small"
+                  onClick={() => {
+                    setStatusFilter(filter.id);
+                    setPage(1);
+                  }}
+                  sx={{
+                    borderRadius: 999,
+                    px: 1.75,
+                    py: 0.5,
+                    fontSize: "0.75rem",
+                    fontWeight: 600,
+                    textTransform: "none",
+                    border: "1px solid",
+                    borderColor: active ? ADMIN_ACCENT : "rgba(0,0,0,0.1)",
+                    bgcolor: active ? ADMIN_ACCENT : "#fff",
+                    color: active ? "#fff" : "text.primary",
+                    "&:hover": {
+                      bgcolor: active ? "#185a4a" : "rgba(31,111,91,0.06)",
+                      borderColor: active ? "#185a4a" : ADMIN_ACCENT,
+                    },
+                  }}
+                >
+                  {filter.label}
+                </Button>
+              );
+            })}
+          </Box>
+        </Box>
+
+        <TableContainer sx={{ width: "100%", overflowX: "auto" }}>
+          <Table size="small" sx={{ width: "100%", minWidth: 1100 }}>
+            <TableHead>
+              <TableRow>
+                <TableCell padding="checkbox" sx={{ bgcolor: "#f8fafc" }}>
+                  <Checkbox
+                    size="small"
+                    checked={allPageSelected}
+                    indeterminate={
+                      !allPageSelected && pageOrders.some((o) => selected.has(o.id))
+                    }
+                    onChange={toggleAllPage}
+                  />
+                </TableCell>
+                {["Order", "Customer", "Items", "Total", "Status", "Date", "Actions"].map(
+                  (h) => (
+                    <TableCell
+                      key={h}
+                      sx={{
+                        fontWeight: 700,
+                        fontSize: "0.7rem",
+                        letterSpacing: "0.06em",
+                        textTransform: "uppercase",
+                        color: "text.secondary",
+                        bgcolor: "#f8fafc",
+                        borderBottomColor: "rgba(0,0,0,0.06)",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {h}
+                    </TableCell>
+                  ),
+                )}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {pageOrders.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} sx={{ py: 6, textAlign: "center" }}>
+                    <Typography color="text.secondary">No orders match your filters.</Typography>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                pageOrders.map((order) => {
+                  const chip = statusChipSx[order.status];
+                  return (
+                    <TableRow key={order.id} hover selected={selected.has(order.id)}>
+                      <TableCell padding="checkbox">
+                        <Checkbox
+                          size="small"
+                          checked={selected.has(order.id)}
+                          onChange={() => toggleRow(order.id)}
+                        />
+                      </TableCell>
+                      <TableCell sx={{ fontWeight: 700, whiteSpace: "nowrap" }}>
+                        #{order.orderNumber}
+                      </TableCell>
+                      <TableCell sx={{ minWidth: 200 }}>
+                        <Typography sx={{ fontSize: "0.85rem", fontWeight: 600 }}>
+                          {order.customerName}
+                        </Typography>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.25, mt: 0.35 }}>
+                          <Typography sx={{ fontSize: "0.8rem", color: "text.secondary" }}>
+                            {order.customerPhone}
+                          </Typography>
+                          <Tooltip title="Copy phone">
+                            <IconButton
+                              size="small"
+                              aria-label="Copy phone"
+                              onClick={() => copyPhone(order.customerPhone)}
+                            >
+                              <ContentCopyRoundedIcon sx={{ fontSize: 15 }} />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Call">
+                            <IconButton
+                              size="small"
+                              component="a"
+                              href={phoneToTel(order.customerPhone)}
+                              aria-label="Call customer"
+                            >
+                              <PhoneOutlinedIcon sx={{ fontSize: 16 }} />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="WhatsApp">
+                            <IconButton
+                              size="small"
+                              component="a"
+                              href={phoneToWhatsApp(order.customerPhone)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              aria-label="WhatsApp"
+                              sx={{ color: "#25d366" }}
+                            >
+                              <WhatsAppIcon sx={{ fontSize: 17 }} />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                      </TableCell>
+                      <TableCell sx={{ maxWidth: 220 }}>
+                        <Typography
+                          sx={{
+                            fontSize: "0.85rem",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {order.itemsSummary}
+                        </Typography>
+                        {order.itemCount > 1 ? (
+                          <Typography sx={{ fontSize: "0.7rem", color: "text.secondary" }}>
+                            {order.itemCount} items
+                          </Typography>
+                        ) : null}
+                      </TableCell>
+                      <TableCell sx={{ fontWeight: 700, whiteSpace: "nowrap" }}>
+                        {formatBdt(order.total)}
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={ADMIN_ORDER_STATUS_LABELS[order.status]}
+                          size="small"
+                          sx={{
+                            borderRadius: 1,
+                            fontWeight: 600,
+                            fontSize: "0.7rem",
+                            bgcolor: chip.bgcolor,
+                            color: chip.color,
+                            border: `1px solid ${chip.border}`,
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell
+                        sx={{
+                          fontSize: "0.8rem",
+                          color: "text.secondary",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {formatOrderDate(order.createdAt)}
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.25 }}>
+                          <Tooltip title="Order note">
+                            <IconButton size="small" aria-label="Order note">
+                              <DescriptionOutlinedIcon
+                                sx={{ fontSize: 18, color: ADMIN_ACCENT }}
+                              />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Tags">
+                            <IconButton size="small" aria-label="Tags">
+                              <SellOutlinedIcon sx={{ fontSize: 18, color: "#16a34a" }} />
+                            </IconButton>
+                          </Tooltip>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            startIcon={<LocalShippingOutlinedIcon sx={{ fontSize: 16 }} />}
+                            sx={{
+                              ml: 0.5,
+                              mr: 0.5,
+                              py: 0.35,
+                              fontSize: "0.7rem",
+                              fontWeight: 600,
+                              textTransform: "none",
+                              borderColor: "rgba(0,0,0,0.12)",
+                              color: "text.primary",
+                              whiteSpace: "nowrap",
+                              display: { xs: "none", lg: "inline-flex" },
+                            }}
+                          >
+                            Send to courier
+                          </Button>
+                          <Tooltip title="View">
+                            <IconButton size="small" aria-label="View order">
+                              <VisibilityOutlinedIcon sx={{ fontSize: 18 }} />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Edit">
+                            <IconButton size="small" aria-label="Edit order">
+                              <EditOutlinedIcon sx={{ fontSize: 18, color: ADMIN_ACCENT }} />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Delete">
+                            <IconButton size="small" aria-label="Delete order">
+                              <DeleteOutlineRoundedIcon
+                                sx={{ fontSize: 18, color: "#dc2626" }}
+                              />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+
+        <Box
+          sx={{
+            px: 2,
+            py: 1.5,
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 1,
+            borderTop: "1px solid",
+            borderColor: "rgba(0,0,0,0.06)",
+            bgcolor: "#fafafa",
+          }}
+        >
+          <Typography sx={{ fontSize: "0.8rem", color: "text.secondary" }}>
+            {filtered.length === 0
+              ? "Showing 0 of 0"
+              : `Showing ${pageStart + 1}–${Math.min(pageStart + PAGE_SIZE, filtered.length)} of ${filtered.length}`}
+          </Typography>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Button
+              size="small"
+              disabled={currentPage <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              sx={{ textTransform: "none", minWidth: 72 }}
+            >
+              Previous
+            </Button>
+            <Typography sx={{ fontSize: "0.8rem", color: "text.secondary" }}>
+              Page {currentPage} / {totalPages}
+            </Typography>
+            <Button
+              size="small"
+              disabled={currentPage >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              sx={{ textTransform: "none", minWidth: 56 }}
+            >
+              Next
+            </Button>
+          </Box>
+        </Box>
+      </Box>
+    </Box>
+  );
+}

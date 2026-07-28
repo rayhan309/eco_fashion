@@ -2,9 +2,9 @@
 
 import { Box, Typography } from "@mui/material";
 import {
-  Area,
-  AreaChart,
   CartesianGrid,
+  Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -25,78 +25,59 @@ export function RevenueChart({ data }: RevenueChartProps) {
     <Box
       sx={{
         height: "100%",
-        borderRadius: 1,
+        borderRadius: 2,
         border: "1px solid",
-        borderColor: "divider",
-        bgcolor: "#fffdf8",
+        borderColor: "rgba(0,0,0,0.06)",
+        bgcolor: "#fff",
+        boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
         p: { xs: 2, sm: 2.5 },
       }}
     >
-      <Box
-        sx={{
-          mb: 2,
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-          gap: 2,
-        }}
-      >
-        <Box>
-          <Typography sx={{ fontWeight: 700, letterSpacing: "-0.02em" }}>
-            Revenue overview
-          </Typography>
-          <Typography sx={{ mt: 0.35, fontSize: "0.85rem", color: "text.secondary" }}>
-            Monthly sales performance for 2026
-          </Typography>
-        </Box>
-      </Box>
+      <Typography sx={{ fontWeight: 700, fontSize: "0.95rem" }}>Revenue overview</Typography>
+      <Typography sx={{ mt: 0.35, fontSize: "0.8rem", color: "text.secondary" }}>
+        Last 6 months
+      </Typography>
 
-      <Box sx={{ width: "100%", height: 280 }}>
+      <Box sx={{ width: "100%", height: { xs: 240, sm: 280 }, mt: 2 }}>
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-            <defs>
-              <linearGradient id="revenueFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#1f6f5b" stopOpacity={0.35} />
-                <stop offset="100%" stopColor="#1f6f5b" stopOpacity={0.02} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(32,49,45,0.08)" vertical={false} />
+          <LineChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" vertical={false} />
             <XAxis
               dataKey="month"
               tickLine={false}
               axisLine={false}
-              tick={{ fill: "#61716a", fontSize: 12 }}
+              tick={{ fill: "#94a3b8", fontSize: 12 }}
             />
             <YAxis
               tickLine={false}
               axisLine={false}
-              width={64}
-              tick={{ fill: "#61716a", fontSize: 12 }}
+              width={48}
+              tick={{ fill: "#94a3b8", fontSize: 12 }}
               tickFormatter={(value: number) =>
                 value >= 1000 ? `${Math.round(value / 1000)}k` : String(value)
               }
             />
             <Tooltip
               contentStyle={{
-                borderRadius: 6,
-                border: "1px solid rgba(32,49,45,0.1)",
-                boxShadow: "0 12px 30px rgba(32,49,45,0.08)",
+                borderRadius: 8,
+                border: "1px solid rgba(0,0,0,0.08)",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+                fontSize: 13,
               }}
-              formatter={(value, name) => {
+              formatter={(value) => {
                 const numeric = typeof value === "number" ? value : Number(value);
-                if (name === "revenue") return [formatBdt(numeric), "Revenue"];
-                return [numeric, "Orders"];
+                return [formatBdt(numeric), "Revenue"];
               }}
             />
-            <Area
+            <Line
               type="monotone"
               dataKey="revenue"
               stroke="#1f6f5b"
               strokeWidth={2.5}
-              fill="url(#revenueFill)"
-              activeDot={{ r: 5, fill: "#1f6f5b" }}
+              dot={{ r: 4, fill: "#1f6f5b", strokeWidth: 0 }}
+              activeDot={{ r: 6 }}
             />
-          </AreaChart>
+          </LineChart>
         </ResponsiveContainer>
       </Box>
     </Box>

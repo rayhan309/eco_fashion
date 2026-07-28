@@ -1,0 +1,1 @@
+export { AdminOrdersView } from "./AdminOrdersView";

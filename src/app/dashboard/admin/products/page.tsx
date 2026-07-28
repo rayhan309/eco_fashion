@@ -1,14 +1,12 @@
 import type { Metadata } from "next";
+import { AdminProductsView } from "@/components/admin";
+import { getAdminProductsCatalog } from "@/services/admin-products";
 
 export const metadata: Metadata = {
   title: "Products",
 };
 
-export default function AdminProductsPage() {
-  return (
-    <div>
-      <h1>Products</h1>
-      <p>Manage products page.</p>
-    </div>
-  );
+export default async function AdminProductsPage() {
+  const { products, categories } = await getAdminProductsCatalog();
+  return <AdminProductsView products={products} categories={categories} />;
 }
