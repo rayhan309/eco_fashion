@@ -17,6 +17,14 @@ export async function getProductsByCategory(categorySlug: string): Promise<Produ
   return products.filter((product) => product.category_slug === categorySlug);
 }
 
+export async function getRelatedProducts(
+  product: Product,
+  limit = 5,
+): Promise<Product[]> {
+  const products = await getProductsByCategory(product.category_slug);
+  return products.filter((item) => item.id !== product.id).slice(0, limit);
+}
+
 export async function getFeaturedProducts(limit = 8): Promise<Product[]> {
   const products = await getProducts();
   return products
