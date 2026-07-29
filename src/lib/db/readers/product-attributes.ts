@@ -1,9 +1,6 @@
 import { dbConnect } from "@/lib/dbConnect";
 import { getSeedModel } from "@/lib/seed/seed-model";
-import {
-  dummyProductAttributes,
-  type ProductAttribute,
-} from "@/data/dummy/product-attributes";
+import type { ProductAttribute } from "@/data/dummy/product-attributes";
 
 function mapAttributeDoc(doc: Record<string, unknown>): ProductAttribute {
   return {
@@ -27,6 +24,6 @@ export async function getProductAttributesFromDbOrFallback(): Promise<ProductAtt
     return await readProductAttributesFromDb();
   } catch (error) {
     console.error("[db] product_attributes read failed:", error);
+    return [];
   }
-  return [...dummyProductAttributes];
 }

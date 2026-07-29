@@ -23,7 +23,7 @@ type ImageKitUploadResponse = {
 
 export async function uploadImageToImageKit(
   file: File,
-  folder = "/eco-fashion/products",
+  folder = "/hidden-urban/products",
 ): Promise<string> {
   assertImageFile(file);
 

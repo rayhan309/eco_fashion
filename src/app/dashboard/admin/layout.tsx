@@ -5,7 +5,7 @@ import { AdminShell } from "@/components/admin";
 export const metadata: Metadata = {
   title: {
     default: "Admin",
-    template: "%s | Admin | Eco Fashion",
+    template: "%s | Admin | Hidden Urban",
   },
 };
 

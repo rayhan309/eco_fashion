@@ -1,7 +1,6 @@
 import { dbConnect } from "@/lib/dbConnect";
 import { getSeedModel } from "@/lib/seed/seed-model";
 import { ProductModel } from "@/models/Product";
-import { dummyProducts } from "@/data/dummy/products";
 import {
   storedVariantsFromDoc,
   summarizeVariants,
@@ -154,7 +153,7 @@ function mapAdminProductDoc(doc: Record<string, unknown>): Product {
     id,
     title,
     slug,
-    brand_or_vendor: String(doc.brandVendor ?? "Eco Fashion"),
+    brand_or_vendor: String(doc.brandVendor ?? "Hidden Urban"),
     category: String(doc.categoryTitle ?? ""),
     category_id: String(doc.categoryId ?? ""),
     category_slug: String(doc.categorySlug ?? ""),
@@ -195,7 +194,9 @@ export async function readCatalogProductsFromDb(): Promise<Product[]> {
   await dbConnect();
   const Model = getSeedModel("catalog_products");
   const docs = await Model.find({}).sort({ createdAt: -1 }).lean();
-  return docs.map((doc) => mapProductDoc(doc as unknown as Record<string, unknown>));
+  return docs
+    .map((doc) => mapProductDoc(doc as unknown as Record<string, unknown>))
+    .filter((product) => Boolean(product.id && product.slug));
 }
 
 export async function readAdminCreatedProductsFromDb(): Promise<Product[]> {
@@ -213,16 +214,15 @@ export async function getProductsFromDbOrFallback(): Promise<Product[]> {
 
     const bySlug = new Map<string, Product>();
     for (const product of [...catalog, ...adminCreated]) {
+      if (!product.slug) continue;
       bySlug.set(product.slug, product);
     }
-    const merged = Array.from(bySlug.values());
-    if (merged.length > 0) {
-      return merged.sort(
-        (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-      );
-    }
+
+    return Array.from(bySlug.values()).sort(
+      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+    );
   } catch (error) {
     console.error("[db] products read failed:", error);
+    return [];
   }
-  return [...dummyProducts];
 }

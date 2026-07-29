@@ -3,18 +3,22 @@ import { CartSidebar } from "@/components/cart/CartSidebar";
 import { NotFoundView } from "@/components/errors";
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
+import { WishlistSidebar } from "@/components/wishlist/WishlistSidebar";
+import { getProducts } from "@/services/products";
 
 export const metadata: Metadata = {
   title: "Page not found",
   description:
-    "This page could not be found. Return home or continue shopping at Eco Fashion.",
+    "This page could not be found. Return home or continue shopping at Hidden Urban.",
   robots: {
     index: false,
     follow: true,
   },
 };
 
-export default function NotFound() {
+export default async function NotFound() {
+  const products = await getProducts();
+
   return (
     <div className="flex min-h-dvh flex-col">
       <Header />
@@ -23,6 +27,7 @@ export default function NotFound() {
       </main>
       <Footer />
       <CartSidebar />
+      <WishlistSidebar products={products} />
     </div>
   );
 }

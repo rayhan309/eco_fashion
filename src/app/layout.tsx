@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Eco Fashion | Men's Fashion",
-    template: "%s | Eco Fashion",
+    default: "Hidden Urban | Men's Fashion",
+    template: "%s | Hidden Urban",
   },
   description: "Men's fashion ecommerce — thoughtful pieces for everyday style.",
 };

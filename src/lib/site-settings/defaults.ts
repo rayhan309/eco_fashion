@@ -6,11 +6,11 @@ const baseColor = ADMIN_ACCENT;
 const colors = expandBrandColors(baseColor);
 
 export const DEFAULT_SITE_SETTINGS: SiteSettings = {
-  shopName: "Eco Fashion",
+  shopName: "Hidden Urban",
   shopTagline: "Made for modern men",
   shopShortDescription:
     "Men's fashion built for everyday clarity — thoughtful cuts, lasting fabrics, and pieces that work harder in your wardrobe.",
-  copyrightText: "© {year} Eco Fashion. All rights reserved.",
+  copyrightText: "© {year} Hidden Urban. All rights reserved.",
   primaryColor: colors.primaryColor,
   primaryColorHover: colors.primaryColorHover,
   primaryColorDark: colors.primaryColorDark,
@@ -18,10 +18,10 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   primaryColorBorder: colors.primaryColorBorder,
   logoUrl: "",
   faviconUrl: "",
-  contactEmail: "hello@ecofashion.com",
+  contactEmail: "hello@hiddenurban.com",
   contactPhone: "01700000000",
   contactAddress: "House 12, Road 5, Dhanmondi",
-  businessName: "Eco Fashion",
+  businessName: "Hidden Urban",
   city: "Dhaka",
   supportHours: "Sat–Thu, 10:00–19:00",
   supportNote: "Our support team is here for sizing, orders, and delivery questions.",

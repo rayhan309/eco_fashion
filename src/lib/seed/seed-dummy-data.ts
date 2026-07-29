@@ -62,12 +62,32 @@ export async function seedDummyData(): Promise<SeedResult[]> {
 
   const productDocs = dummyProducts.map((product) => ({
     legacyId: product.id,
-    ...product,
+    id: product.id,
+    title: product.title,
+    slug: product.slug,
+    brand_or_vendor: product.brand_or_vendor,
+    category: product.category,
+    category_id: product.category_id,
+    category_slug: product.category_slug,
+    description: product.description,
+    tags: product.tags,
+    pricing: product.pricing,
+    inventory: product.inventory,
+    attributes: product.attributes,
+    ratings: product.ratings,
+    images: product.images,
+    createdAt: product.createdAt,
+    updatedAt: product.updatedAt,
   }));
 
   const collectionDocs = dummyCollections.map((collection) => ({
     legacyId: collection.id,
-    ...collection,
+    id: collection.id,
+    title: collection.title,
+    slug: collection.slug,
+    description: collection.description,
+    image: collection.image,
+    productIds: collection.productIds,
   }));
 
   const customerDocs = dummyAdminCustomers.map((customer) => ({

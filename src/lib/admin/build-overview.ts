@@ -7,7 +7,7 @@ import {
   type RevenuePoint,
 } from "@/data/dummy/admin-overview";
 import type { AdminOverviewData } from "@/services/admin";
-import type { AdminOrder, AdminOrderStatus } from "@/data/dummy/admin-orders";
+import type { AdminOrder, AdminOrderStatus } from "@/types/admin-order";
 import { getAdminOrdersFromDbOrFallback } from "@/lib/db/readers/admin-orders";
 import { getAdminCustomersFromDbOrFallback } from "@/lib/db/readers/customers";
 import { getProductsFromDbOrFallback } from "@/lib/db/readers/products";

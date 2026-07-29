@@ -35,7 +35,7 @@ import {
   ADMIN_ORDER_STATUS_LABELS,
   type AdminOrder,
   type AdminOrderStatus,
-} from "@/data/dummy/admin-orders";
+} from "@/types/admin-order";
 import { ADMIN_ACCENT } from "@/lib/constants/admin";
 
 const PAGE_SIZE = 10;

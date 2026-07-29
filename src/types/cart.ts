@@ -5,6 +5,8 @@ export type CartItem = {
   slug: string;
   name: string;
   price: number;
+  /** Original price before discount; null/undefined if no compare-at. */
+  compareAtPrice?: number | null;
   currency: Product["pricing"]["currency"];
   quantity: number;
   size: ProductSize;
@@ -15,5 +17,6 @@ export type CartItem = {
 export type Cart = {
   items: CartItem[];
   subtotal: number;
+  savings: number;
   currency: Product["pricing"]["currency"];
 };

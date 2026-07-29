@@ -89,7 +89,7 @@ export function NotFoundView({ breakout = false }: NotFoundViewProps) {
             </p>
 
             <p className="mt-3 text-[1.75rem] leading-none font-bold tracking-[-0.04em] text-white sm:mt-4 sm:text-4xl md:text-5xl">
-              Eco Fashion
+              Hidden Urban
             </p>
 
             <h1 className="mt-3 max-w-xl text-lg leading-snug font-semibold tracking-[-0.02em] text-white/95 sm:mt-4 sm:text-2xl md:text-3xl">

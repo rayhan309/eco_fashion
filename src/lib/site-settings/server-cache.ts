@@ -8,7 +8,7 @@ export const SITE_SETTINGS_CACHE_TAG = "site-settings";
 
 const getCachedSiteSettingsInner = unstable_cache(
   async (): Promise<SiteSettings> => getSiteSettingsFromDbOrFallback(),
-  ["site-settings"],
+  ["site-settings", "hidden-urban"],
   {
     revalidate: SITE_SETTINGS_REVALIDATE_SECONDS,
     tags: [SITE_SETTINGS_CACHE_TAG],

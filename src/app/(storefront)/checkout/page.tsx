@@ -1,14 +1,11 @@
-import { Typography } from "@mui/material";
+import type { Metadata } from "next";
+import { CheckoutPageView } from "@/components/checkout/CheckoutPageView";
+
+export const metadata: Metadata = {
+  title: "Checkout",
+  description: "Complete your Hidden Urban order with cash on delivery.",
+};
 
 export default function CheckoutPage() {
-  return (
-    <>
-      <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
-        Checkout
-      </Typography>
-      <Typography color="text.secondary" sx={{ mt: 1 }}>
-        Shipping and payment flow will appear here.
-      </Typography>
-    </>
-  );
+  return <CheckoutPageView />;
 }

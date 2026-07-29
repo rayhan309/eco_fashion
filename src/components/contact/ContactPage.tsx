@@ -39,8 +39,8 @@ const CONTACT_CHANNELS = [
   {
     icon: EmailOutlinedIcon,
     label: "Email",
-    value: "hello@ecofashion.com",
-    href: "mailto:hello@ecofashion.com",
+    value: "hello@hiddenurban.com",
+    href: "mailto:hello@hiddenurban.com",
   },
   {
     icon: PhoneOutlinedIcon,
@@ -110,7 +110,7 @@ export function ContactPage() {
             className="max-w-2xl"
           >
             <p className="text-3xl font-bold tracking-[-0.04em] text-white sm:text-4xl md:text-5xl">
-              Eco Fashion
+              Hidden Urban
             </p>
             <h1 className="mt-4 max-w-xl text-xl font-semibold tracking-[-0.02em] text-white/95 sm:text-2xl md:text-3xl">
               We&apos;re here to help.
@@ -121,7 +121,7 @@ export function ContactPage() {
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <a
-                href="mailto:hello@ecofashion.com"
+                href="mailto:hello@hiddenurban.com"
                 className="inline-flex items-center rounded-md bg-white px-5 py-2.5 text-sm font-semibold text-[#20312d] transition-colors hover:bg-[#f6f3ed]"
               >
                 Email us
@@ -150,7 +150,7 @@ export function ContactPage() {
               Contact details
             </p>
             <h2 className="mt-3 text-2xl font-bold tracking-[-0.03em] text-[#20312d] sm:text-3xl">
-              Talk to Eco Fashion.
+              Talk to Hidden Urban.
             </h2>
             <p className="mt-3 text-sm leading-relaxed text-[#61716a] sm:text-base">
               Prefer a direct line? Use the channels below, or send a message —
@@ -190,7 +190,7 @@ export function ContactPage() {
                 href="/about"
                 className="font-semibold text-[#1f6f5b] transition-colors hover:text-[#185a4a]"
               >
-                Learn about Eco Fashion
+                Learn about Hidden Urban
               </Link>
             </p>
           </motion.div>

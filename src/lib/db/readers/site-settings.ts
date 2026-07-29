@@ -3,7 +3,7 @@ import { getSeedModel } from "@/lib/seed/seed-model";
 import { DEFAULT_SITE_SETTINGS } from "@/lib/site-settings/defaults";
 import { expandBrandColors } from "@/lib/site-settings/colors";
 import { toPublicSiteSettings } from "@/lib/site-settings/public";
-import type { PublicSiteSettings, SiteSettings, SiteSocialLink } from "@/types/site-settings";
+import type { SiteSettings, SiteSocialLink } from "@/types/site-settings";
 
 export { toPublicSiteSettings };
 
@@ -29,12 +29,34 @@ function mapSocialLinks(raw: unknown): SiteSocialLink[] {
   });
 }
 
+function needsBrandRename(doc: Record<string, unknown>): boolean {
+  const shop = String(doc.shopName ?? doc.businessName ?? "");
+  const copyright = String(doc.copyrightText ?? "");
+  const email = String(doc.contactEmail ?? "");
+  return (
+    shop === "Eco Fashion" ||
+    copyright.includes("Eco Fashion") ||
+    email.includes("ecofashion")
+  );
+}
+
+function applyBrandRename(settings: SiteSettings): SiteSettings {
+  return {
+    ...settings,
+    shopName: settings.shopName === "Eco Fashion" ? "Hidden Urban" : settings.shopName,
+    businessName:
+      settings.businessName === "Eco Fashion" ? "Hidden Urban" : settings.businessName,
+    copyrightText: settings.copyrightText.replaceAll("Eco Fashion", "Hidden Urban"),
+    contactEmail: settings.contactEmail.replaceAll("ecofashion.com", "hiddenurban.com"),
+  };
+}
+
 export function mapSiteSettingsDoc(doc: Record<string, unknown>): SiteSettings {
   const primary =
     String(doc.primaryColor ?? doc.brandColor ?? DEFAULT_SITE_SETTINGS.primaryColor);
   const colors = expandBrandColors(primary);
 
-  return {
+  const mapped: SiteSettings = {
     shopName: String(doc.shopName ?? doc.businessName ?? DEFAULT_SITE_SETTINGS.shopName),
     shopTagline: String(doc.shopTagline ?? DEFAULT_SITE_SETTINGS.shopTagline),
     shopShortDescription: String(
@@ -64,6 +86,8 @@ export function mapSiteSettingsDoc(doc: Record<string, unknown>): SiteSettings {
     steadfastApiKey: String(doc.steadfastApiKey ?? ""),
     steadfastSecretKey: String(doc.steadfastSecretKey ?? ""),
   };
+
+  return needsBrandRename(doc) ? applyBrandRename(mapped) : mapped;
 }
 
 export async function readSiteSettingsFromDb(): Promise<SiteSettings | null> {

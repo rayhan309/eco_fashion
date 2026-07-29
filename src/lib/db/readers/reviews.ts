@@ -1,6 +1,5 @@
 import { dbConnect } from "@/lib/dbConnect";
 import { getSeedModel } from "@/lib/seed/seed-model";
-import { dummyReviews } from "@/data/dummy/reviews";
 import type { ClientReview } from "@/types/review";
 
 function mapReviewDoc(doc: Record<string, unknown>): ClientReview {
@@ -26,9 +25,9 @@ export async function readReviewsFromDb(): Promise<ClientReview[]> {
 export async function getReviewsFromDbOrFallback(limit: number): Promise<ClientReview[]> {
   try {
     const rows = await readReviewsFromDb();
-    if (rows.length > 0) return rows.slice(0, limit);
+    return rows.slice(0, limit);
   } catch (error) {
     console.error("[db] reviews read failed:", error);
+    return [];
   }
-  return dummyReviews.slice(0, limit);
 }

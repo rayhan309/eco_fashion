@@ -50,7 +50,7 @@ export function AboutPage() {
             className="max-w-2xl"
           >
             <p className="text-3xl font-bold tracking-[-0.04em] text-white sm:text-4xl md:text-5xl">
-              Eco Fashion
+              Hidden Urban
             </p>
             <h1 className="mt-4 max-w-xl text-xl font-semibold tracking-[-0.02em] text-white/95 sm:text-2xl md:text-3xl">
               Men&apos;s wear built for everyday clarity.
@@ -92,7 +92,7 @@ export function AboutPage() {
               From closet clutter to a clearer uniform.
             </h2>
             <p className="mt-4 text-sm leading-relaxed text-[#61716a] sm:text-base">
-              Eco Fashion started with a simple frustration: too many clothes,
+              Hidden Urban started with a simple frustration: too many clothes,
               too few pieces that actually fit how men live. We set out to edit
               the wardrobe down to essentials that look sharp, feel considered,
               and last longer than a single season.

@@ -828,7 +828,7 @@ export const dummyProducts: Product[] = productSeeds.map((seed, index) => {
     id: `p-${String(index + 1).padStart(3, "0")}`,
     title: seed.title,
     slug: seed.slug,
-    brand_or_vendor: seed.brand ?? "Eco Fashion",
+    brand_or_vendor: seed.brand ?? "Hidden Urban",
     category: category?.title ?? seed.category_slug,
     category_id: category?.id ?? `cat-${seed.category_slug}`,
     category_slug: seed.category_slug,

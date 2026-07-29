@@ -43,7 +43,7 @@ export function Header() {
   const pathname = usePathname();
   const settings = useSiteSettings();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { openCart } = useCartUI();
+  const { openCart, openWishlist } = useCartUI();
   const { itemCount } = useCart();
   const { count: wishlistCount } = useWishlist();
 
@@ -155,9 +155,8 @@ export function Header() {
 
             <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
               <IconButton
-                component={Link}
-                href="/shop"
-                aria-label="Wishlist items in shop"
+                aria-label="Open wishlist"
+                onClick={openWishlist}
                 sx={iconBtnSx}
               >
                 <Badge badgeContent={wishlistCount} color="primary" max={99} sx={badgeSx}>

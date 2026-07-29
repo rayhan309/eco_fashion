@@ -39,6 +39,7 @@ export function CollectionProductCard({ product, index = 0 }: CollectionProductC
       slug: product.slug,
       name: product.title,
       price: product.pricing.price,
+      compareAtPrice: product.pricing.compareAtPrice,
       currency: product.pricing.currency,
       size: product.attributes.sizes[1] ?? product.attributes.sizes[0] ?? "M",
       color: product.attributes.colors[0] ?? "Default",

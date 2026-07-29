@@ -1,0 +1,307 @@
+"use client";
+
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+import PaymentsOutlinedIcon from "@mui/icons-material/PaymentsOutlined";
+import {
+  Alert,
+  Box,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+  Stack,
+  TextField,
+  Typography,
+} from "@mui/material";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { CartItemRow } from "@/components/cart/CartItemRow";
+import { CartOrderSummary } from "@/components/cart/CartOrderSummary";
+import { useCart } from "@/hooks/useCart";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { BD_REGION_OPTIONS, BD_REGIONS } from "@/lib/constants/locations";
+import { placeStoreOrder } from "@/services/store-orders";
+
+type CheckoutFormValues = {
+  name: string;
+  phone: string;
+  email: string;
+  address: string;
+  region: string;
+  city: string;
+  note: string;
+};
+
+const PHONE_PATTERN = /^(\+880|880|0)?1[3-9]\d{8}$/;
+
+const INSIDE_DHAKA_SHIPPING = 60;
+const OUTSIDE_DHAKA_SHIPPING = 120;
+
+export function CheckoutPageView() {
+  const router = useRouter();
+  const settings = useSiteSettings();
+  const { cart, clearCart, updateQuantity, removeItem } = useCart();
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const {
+    register,
+    control,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<CheckoutFormValues>({
+    defaultValues: {
+      name: "",
+      phone: "",
+      email: "",
+      address: "",
+      region: "Dhaka",
+      city: "Dhaka",
+      note: "",
+    },
+    mode: "onBlur",
+  });
+
+  const region = watch("region");
+  const city = watch("city");
+  const districts = BD_REGIONS[region] ?? [];
+
+  const shippingFee = useMemo(() => {
+    if (cart.subtotal >= settings.freeDeliveryMinimum) return 0;
+    return region === "Dhaka" && city === "Dhaka"
+      ? INSIDE_DHAKA_SHIPPING
+      : OUTSIDE_DHAKA_SHIPPING;
+  }, [cart.subtotal, settings.freeDeliveryMinimum, region, city]);
+
+  const isEmpty = cart.items.length === 0;
+
+  async function onSubmit(values: CheckoutFormValues) {
+    setSubmitError(null);
+    try {
+      const order = await placeStoreOrder({
+        customer: {
+          name: values.name,
+          phone: values.phone,
+          email: values.email,
+          address: values.address,
+          region: values.region,
+          city: values.city,
+          note: values.note,
+        },
+        items: cart.items,
+        shippingFee,
+      });
+      clearCart();
+      const successParams = new URLSearchParams({
+        order: order.orderNumber,
+        phone: values.phone.trim(),
+      });
+      router.push(`/checkout/success?${successParams.toString()}`);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Could not place order");
+    }
+  }
+
+  if (isEmpty) {
+    return (
+      <div className="mx-auto max-w-lg py-16 text-center">
+        <h1 className="text-2xl font-bold text-[#20312d]">Your cart is empty</h1>
+        <p className="mt-2 text-sm text-[#61716a]">Add products before checking out.</p>
+        <Link
+          href="/shop"
+          className="mt-6 inline-flex rounded-md bg-[var(--eco-primary)] px-4 py-2.5 text-sm font-semibold text-white"
+        >
+          Browse shop
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-8">
+      <div className="text-center">
+        <h1 className="text-2xl font-bold tracking-[-0.03em] text-[#20312d] sm:text-3xl">
+          Confirm your order
+        </h1>
+        <p className="mt-2 text-sm text-[#61716a] sm:text-base">
+          Enter your name, address, and phone number
+        </p>
+      </div>
+
+      {submitError ? (
+        <Alert severity="error" sx={{ borderRadius: 1 }}>
+          {submitError}
+        </Alert>
+      ) : null}
+
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+          <Stack spacing={2.5} className="lg:col-span-7">
+            <Box
+              sx={{
+                border: "1px solid",
+                borderColor: "divider",
+                borderRadius: 1,
+                p: { xs: 2, sm: 2.5 },
+                bgcolor: "background.paper",
+              }}
+            >
+              <Typography sx={{ fontWeight: 700, mb: 2 }}>Contact & delivery</Typography>
+              <Stack spacing={2}>
+                <TextField
+                  label="Full name"
+                  fullWidth
+                  error={Boolean(errors.name)}
+                  helperText={errors.name?.message}
+                  {...register("name", { required: "Name is required", minLength: 2 })}
+                />
+                <TextField
+                  label="Phone"
+                  fullWidth
+                  placeholder="01XXXXXXXXX"
+                  error={Boolean(errors.phone)}
+                  helperText={errors.phone?.message}
+                  {...register("phone", {
+                    required: "Phone is required",
+                    pattern: { value: PHONE_PATTERN, message: "Enter a valid BD mobile number" },
+                  })}
+                />
+                <TextField
+                  label="Email (optional)"
+                  type="email"
+                  fullWidth
+                  {...register("email")}
+                />
+                <Controller
+                  name="region"
+                  control={control}
+                  rules={{ required: true }}
+                  render={({ field }) => (
+                    <FormControl fullWidth>
+                      <InputLabel id="region-label">Division</InputLabel>
+                      <Select
+                        {...field}
+                        labelId="region-label"
+                        label="Division"
+                        onChange={(event) => {
+                          field.onChange(event);
+                          const next = String(event.target.value);
+                          const first = BD_REGIONS[next]?.[0] ?? "";
+                          setValue("city", first);
+                        }}
+                      >
+                        {BD_REGION_OPTIONS.map((option) => (
+                          <MenuItem key={option} value={option}>
+                            {option}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  )}
+                />
+                <Controller
+                  name="city"
+                  control={control}
+                  rules={{ required: "District is required" }}
+                  render={({ field }) => (
+                    <FormControl fullWidth error={Boolean(errors.city)}>
+                      <InputLabel id="city-label">District</InputLabel>
+                      <Select {...field} labelId="city-label" label="District">
+                        {districts.map((district) => (
+                          <MenuItem key={district} value={district}>
+                            {district}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  )}
+                />
+                <TextField
+                  label="Full address"
+                  fullWidth
+                  multiline
+                  minRows={2}
+                  error={Boolean(errors.address)}
+                  helperText={errors.address?.message}
+                  {...register("address", { required: "Address is required", minLength: 8 })}
+                />
+                <TextField
+                  label="Order note (optional)"
+                  fullWidth
+                  multiline
+                  minRows={2}
+                  {...register("note")}
+                />
+              </Stack>
+            </Box>
+
+            <Box
+              sx={{
+                border: "1px solid",
+                borderColor: "divider",
+                borderRadius: 1,
+                p: { xs: 2, sm: 2.5 },
+                bgcolor: "background.paper",
+              }}
+            >
+              <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", mb: 1 }}>
+                <PaymentsOutlinedIcon color="primary" />
+                <Typography sx={{ fontWeight: 700 }}>Payment</Typography>
+              </Stack>
+              <Typography variant="body2" color="text.secondary">
+                Cash on delivery (COD). Pay when your order arrives.
+              </Typography>
+            </Box>
+          </Stack>
+
+          <Box className="lg:col-span-5">
+            <Stack
+              spacing={2}
+              sx={{
+                position: { lg: "sticky" },
+                top: { lg: 96 },
+              }}
+            >
+              <Stack spacing={1.5}>
+                {cart.items.map((item) => (
+                  <CartItemRow
+                    key={`${item.productId}-${item.size}-${item.color}`}
+                    item={item}
+                    compact
+                    onIncrease={() =>
+                      updateQuantity(item.productId, item.size, item.color, item.quantity + 1)
+                    }
+                    onDecrease={() =>
+                      updateQuantity(item.productId, item.size, item.color, item.quantity - 1)
+                    }
+                    onRemove={() => removeItem(item.productId, item.size, item.color)}
+                  />
+                ))}
+              </Stack>
+
+              <CartOrderSummary
+                cart={cart}
+                deliveryCharge={shippingFee}
+                confirmAsSubmit
+                confirmDisabled={isSubmitting}
+                confirmLabel={isSubmitting ? "Placing order…" : "Place order"}
+              />
+
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ display: "flex", alignItems: "center", gap: 0.5, px: 0.5 }}
+              >
+                <LockOutlinedIcon sx={{ fontSize: 14 }} />
+                Secure checkout · Cash on delivery
+              </Typography>
+            </Stack>
+          </Box>
+        </div>
+      </form>
+    </div>
+  );
+}

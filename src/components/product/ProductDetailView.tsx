@@ -98,6 +98,7 @@ export function ProductDetailView({ product, relatedProducts }: ProductDetailVie
       slug: product.slug,
       name: product.title,
       price: product.pricing.price,
+      compareAtPrice: product.pricing.compareAtPrice,
       currency: product.pricing.currency,
       quantity: qty,
       size: selectedSize,

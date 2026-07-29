@@ -121,7 +121,7 @@ export function AdminCollectionsView({ collections }: AdminCollectionsViewProps)
     try {
       setImageError(null);
       setUploadingImage(true);
-      const url = await uploadImageToImageKit(file, "/eco-fashion/collections");
+      const url = await uploadImageToImageKit(file, "/hidden-urban/collections");
       setValue("image", url, { shouldValidate: true, shouldDirty: true });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Image upload failed";

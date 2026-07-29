@@ -1,7 +1,6 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { products } from "@/data/products";
 import type { Cart, CartItem } from "@/types/cart";
 import type { ProductSize } from "@/types/product";
 
@@ -13,23 +12,52 @@ type AddItemInput = Omit<CartItem, "quantity"> & {
   quantity?: number;
 };
 
-const sampleItems: CartItem[] = products.slice(0, 2).map((product, index) => ({
-  productId: product.id,
-  slug: product.slug,
-  name: product.title,
-  price: product.pricing.price,
-  currency: product.pricing.currency,
-  quantity: index === 0 ? 1 : 2,
-  size: product.attributes.sizes[1] ?? "M",
-  color: product.attributes.colors[0] ?? "Default",
-  image: product.images[0]?.url ?? "",
-}));
+const CART_STORAGE_KEY = "hidden-urban-cart";
+const emptyStore: CartStore = { items: [] };
 
-let cartState: CartStore = { items: sampleItems };
+let cartState: CartStore = emptyStore;
+let hydrated = false;
 const listeners = new Set<() => void>();
 
 function emit() {
   listeners.forEach((listener) => listener());
+}
+
+function persist(items: CartItem[]) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
+  } catch {
+    /* ignore quota errors */
+  }
+}
+
+function readStoredItems(): CartItem[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(CART_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (item): item is CartItem =>
+        Boolean(item && typeof item === "object" && "productId" in item && "quantity" in item),
+    );
+  } catch {
+    return [];
+  }
+}
+
+function ensureHydrated() {
+  if (hydrated || typeof window === "undefined") return;
+  hydrated = true;
+  cartState = { items: readStoredItems() };
+}
+
+function setItems(items: CartItem[]) {
+  cartState = { items };
+  persist(items);
+  emit();
 }
 
 function subscribe(listener: () => void) {
@@ -38,11 +66,12 @@ function subscribe(listener: () => void) {
 }
 
 function getSnapshot() {
+  ensureHydrated();
   return cartState;
 }
 
 function getServerSnapshot() {
-  return cartState;
+  return emptyStore;
 }
 
 function itemKey(productId: string, size: ProductSize, color: string) {
@@ -57,13 +86,21 @@ export function useCart() {
     0,
   );
 
+  const savings = state.items.reduce((total, item) => {
+    const compare = item.compareAtPrice;
+    if (compare == null || compare <= item.price) return total;
+    return total + (compare - item.price) * item.quantity;
+  }, 0);
+
   const cart: Cart = {
     items: state.items,
     subtotal,
+    savings,
     currency: state.items[0]?.currency ?? "BDT",
   };
 
   function addItem(input: AddItemInput) {
+    ensureHydrated();
     const quantity = input.quantity ?? 1;
     const existing = cartState.items.find(
       (item) =>
@@ -73,29 +110,24 @@ export function useCart() {
     );
 
     if (existing) {
-      cartState = {
-        items: cartState.items.map((item) =>
-          item === existing
-            ? { ...item, quantity: item.quantity + quantity }
-            : item,
+      setItems(
+        cartState.items.map((item) =>
+          item === existing ? { ...item, quantity: item.quantity + quantity } : item,
         ),
-      };
+      );
     } else {
-      cartState = {
-        items: [...cartState.items, { ...input, quantity }],
-      };
+      setItems([...cartState.items, { ...input, quantity }]);
     }
-
-    emit();
   }
 
   function removeItem(productId: string, size: ProductSize, color: string) {
-    cartState = {
-      items: cartState.items.filter(
-        (item) => itemKey(item.productId, item.size, item.color) !== itemKey(productId, size, color),
+    ensureHydrated();
+    setItems(
+      cartState.items.filter(
+        (item) =>
+          itemKey(item.productId, item.size, item.color) !== itemKey(productId, size, color),
       ),
-    };
-    emit();
+    );
   }
 
   function updateQuantity(
@@ -109,19 +141,18 @@ export function useCart() {
       return;
     }
 
-    cartState = {
-      items: cartState.items.map((item) =>
+    ensureHydrated();
+    setItems(
+      cartState.items.map((item) =>
         itemKey(item.productId, item.size, item.color) === itemKey(productId, size, color)
           ? { ...item, quantity }
           : item,
       ),
-    };
-    emit();
+    );
   }
 
   function clearCart() {
-    cartState = { items: [] };
-    emit();
+    setItems([]);
   }
 
   return {

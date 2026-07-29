@@ -38,6 +38,7 @@ export const FOOTER_SHOP: NavItem[] = [
 export const FOOTER_HELP: NavItem[] = [
   { label: "About", href: "/about" },
   { label: "Contact", href: "/contact" },
+  { label: "Track order", href: "/track-order" },
   { label: "Cart", href: "/cart" },
   { label: "Checkout", href: "/checkout" },
 ];

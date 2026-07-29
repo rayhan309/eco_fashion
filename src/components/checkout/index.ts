@@ -1,2 +1,2 @@
-/** Checkout UI components. */
-export {};
+export { CheckoutPageView } from "./CheckoutPageView";
+export { CheckoutSuccessView } from "./CheckoutSuccessView";

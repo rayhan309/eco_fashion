@@ -138,7 +138,7 @@ function SidebarContent({
                 textOverflow: "ellipsis",
               }}
             >
-              Eco Fashion
+              Hidden Urban
             </Typography>
             <Typography sx={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.45)" }}>
               Admin

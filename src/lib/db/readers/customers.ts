@@ -2,7 +2,6 @@ import { dbConnect } from "@/lib/dbConnect";
 import { getSeedModel } from "@/lib/seed/seed-model";
 import {
   computeCustomerStats,
-  dummyAdminCustomers,
   type AdminCustomer,
   type AdminCustomerStats,
 } from "@/data/dummy/admin-customers";
@@ -31,19 +30,12 @@ export async function getAdminCustomersFromDbOrFallback(): Promise<{
   stats: AdminCustomerStats;
 }> {
   try {
-    const rows = await readCustomersFromDb();
-    if (rows.length > 0) {
-      const customers = rows.sort(
-        (a, b) => new Date(b.lastOrderAt).getTime() - new Date(a.lastOrderAt).getTime(),
-      );
-      return { customers, stats: computeCustomerStats(customers) };
-    }
+    const customers = (await readCustomersFromDb()).sort(
+      (a, b) => new Date(b.lastOrderAt).getTime() - new Date(a.lastOrderAt).getTime(),
+    );
+    return { customers, stats: computeCustomerStats(customers) };
   } catch (error) {
     console.error("[db] customers read failed:", error);
+    return { customers: [], stats: computeCustomerStats([]) };
   }
-
-  const customers = [...dummyAdminCustomers].sort(
-    (a, b) => new Date(b.lastOrderAt).getTime() - new Date(a.lastOrderAt).getTime(),
-  );
-  return { customers, stats: computeCustomerStats(customers) };
 }

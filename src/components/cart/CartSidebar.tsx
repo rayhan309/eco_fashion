@@ -5,7 +5,6 @@ import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
 import {
   Box,
   Button,
-  Divider,
   Drawer,
   IconButton,
   Stack,
@@ -13,8 +12,8 @@ import {
 } from "@mui/material";
 import Link from "next/link";
 import { CartItemRow } from "@/components/cart/CartItemRow";
+import { CartOrderSummary } from "@/components/cart/CartOrderSummary";
 import { useCart } from "@/hooks/useCart";
-import { formatCurrency } from "@/lib/formatters/currency";
 import { useCartUI } from "@/providers/CartUIProvider";
 
 export function CartSidebar() {
@@ -32,7 +31,7 @@ export function CartSidebar() {
           sx: {
             width: { xs: "100%", sm: 420 },
             maxWidth: "100vw",
-            bgcolor: "background.paper",
+            bgcolor: "background.default",
             display: "flex",
             flexDirection: "column",
           },
@@ -48,6 +47,7 @@ export function CartSidebar() {
           py: 2,
           borderBottom: "1px solid",
           borderColor: "divider",
+          bgcolor: "background.paper",
         }}
       >
         <Box>
@@ -73,7 +73,7 @@ export function CartSidebar() {
         </IconButton>
       </Stack>
 
-      <Box sx={{ flex: 1, overflowY: "auto", px: 2.5 }}>
+      <Box sx={{ flex: 1, overflowY: "auto", px: 2, py: 2 }}>
         {isEmpty ? (
           <Stack
             sx={{
@@ -97,10 +97,7 @@ export function CartSidebar() {
                 mb: 1,
               }}
             >
-              <ShoppingBagOutlinedIcon
-                color="primary"
-                sx={{ fontSize: { xs: 22, sm: 28 } }}
-              />
+              <ShoppingBagOutlinedIcon color="primary" sx={{ fontSize: { xs: 22, sm: 28 } }} />
             </Box>
             <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
               Your cart is empty
@@ -119,11 +116,12 @@ export function CartSidebar() {
             </Button>
           </Stack>
         ) : (
-          <Stack divider={<Divider />} sx={{ py: 1 }}>
+          <Stack spacing={1.5}>
             {cart.items.map((item) => (
               <CartItemRow
                 key={`${item.productId}-${item.size}-${item.color}`}
                 item={item}
+                compact
                 onIncrease={() =>
                   updateQuantity(item.productId, item.size, item.color, item.quantity + 1)
                 }
@@ -138,47 +136,23 @@ export function CartSidebar() {
       </Box>
 
       {!isEmpty ? (
-        <Box
-          sx={{
-            borderTop: "1px solid",
-            borderColor: "divider",
-            p: 2.5,
-            bgcolor: "background.default",
-          }}
-        >
-          <Stack direction="row" sx={{ justifyContent: "space-between", mb: 2 }}>
-            <Typography color="text.secondary">Subtotal</Typography>
-            <Typography sx={{ fontWeight: 700 }}>
-              {formatCurrency(cart.subtotal, cart.currency)}
-            </Typography>
-          </Stack>
-          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 2 }}>
-            Shipping and taxes calculated at checkout.
-          </Typography>
-          <Stack spacing={1.25}>
-            <Button
-              component={Link}
-              href="/checkout"
-              variant="contained"
-              size="large"
-              fullWidth
-              onClick={closeCart}
-              sx={{ borderRadius: 1 }}
-            >
-              Checkout
-            </Button>
-            <Button
-              component={Link}
-              href="/cart"
-              variant="outlined"
-              size="large"
-              fullWidth
-              onClick={closeCart}
-              sx={{ borderRadius: 1 }}
-            >
-              View cart
-            </Button>
-          </Stack>
+        <Box sx={{ borderTop: "1px solid", borderColor: "divider", p: 2, bgcolor: "background.paper" }}>
+          <CartOrderSummary
+            cart={cart}
+            confirmLabel="Confirm order"
+            confirmHref="/checkout"
+            onConfirmClick={closeCart}
+          />
+          <Button
+            component={Link}
+            href="/cart"
+            variant="text"
+            fullWidth
+            onClick={closeCart}
+            sx={{ mt: 1, textTransform: "none", fontWeight: 600 }}
+          >
+            View full cart
+          </Button>
         </Box>
       ) : null}
     </Drawer>

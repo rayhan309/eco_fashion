@@ -2,7 +2,7 @@ import type { HomePageData } from "@/lib/data/home";
 import type { AdminOverviewData } from "@/services/admin";
 import type { AdminCustomersData } from "@/services/admin-customers";
 import type { AdminProductsCatalog } from "@/services/admin-products";
-import type { AdminOrder } from "@/data/dummy/admin-orders";
+import type { AdminOrder } from "@/types/admin-order";
 import type { AdminCategory } from "@/types/admin-category";
 import type { ProductAttribute } from "@/data/dummy/product-attributes";
 import type { Collection } from "@/types/collection";

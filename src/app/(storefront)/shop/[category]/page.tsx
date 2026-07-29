@@ -20,7 +20,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
     <div className="flex flex-col gap-6 md:gap-8">
       <PageHeader
         title={category.title}
-        description={`Explore ${category.title.toLowerCase()} from Eco Fashion — selected for fit, fabric, and everyday wear.`}
+        description={`Explore ${category.title.toLowerCase()} from Hidden Urban — selected for fit, fabric, and everyday wear.`}
         countLabel={`${products.length} products`}
         breadcrumbs={[
           { label: "Home", href: "/" },

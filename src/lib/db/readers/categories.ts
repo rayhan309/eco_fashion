@@ -1,6 +1,5 @@
 import { dbConnect } from "@/lib/dbConnect";
 import { getSeedModel } from "@/lib/seed/seed-model";
-import { dummyCategories } from "@/data/dummy/categories";
 import type { Category } from "@/types/category";
 
 function mapCategoryDoc(doc: Record<string, unknown>): Category {
@@ -17,15 +16,17 @@ export async function readCategoriesFromDb(): Promise<Category[]> {
   await dbConnect();
   const Model = getSeedModel("categories");
   const docs = await Model.find({}).sort({ sortOrder: 1, title: 1 }).lean();
-  return docs.map((doc) => mapCategoryDoc(doc as unknown as Record<string, unknown>));
+  return docs
+    .map((doc) => mapCategoryDoc(doc as unknown as Record<string, unknown>))
+    .filter((category) => Boolean(category.id && category.slug));
 }
 
+/** Categories from MongoDB only (seeded from dummy data). */
 export async function getCategoriesFromDbOrFallback(): Promise<Category[]> {
   try {
-    const rows = await readCategoriesFromDb();
-    if (rows.length > 0) return rows;
+    return await readCategoriesFromDb();
   } catch (error) {
     console.error("[db] categories read failed:", error);
+    return [];
   }
-  return [...dummyCategories];
 }

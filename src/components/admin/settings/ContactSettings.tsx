@@ -47,8 +47,8 @@ export function ContactSettings() {
     formState: { errors, isSubmitting },
   } = useForm<ContactFormValues>({
     defaultValues: {
-      businessName: "Eco Fashion",
-      email: "hello@ecofashion.com",
+      businessName: "Hidden Urban",
+      email: "hello@hiddenurban.com",
       phone: "01700000000",
       address: "House 12, Road 5, Dhanmondi",
       city: "Dhaka",

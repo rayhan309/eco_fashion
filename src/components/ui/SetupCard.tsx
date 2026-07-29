@@ -29,7 +29,7 @@ export function SetupCard() {
                 Build better, beautifully.
               </Typography>
               <Typography color="text.secondary" sx={{ maxWidth: 480 }}>
-                Your Next.js foundation now has a central MUI theme and a focused motion layer ready for the eco fashion experience.
+                Your Next.js foundation now has a central MUI theme and a focused motion layer ready for the Hidden Urban experience.
               </Typography>
             </Box>
             <Stack sx={{ gap: 1.25 }}>

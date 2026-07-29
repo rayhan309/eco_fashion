@@ -66,7 +66,7 @@ const defaultValues: GeneralSettingsFormValues = {
   shortDescription:
     "Men's fashion built for everyday clarity — thoughtful cuts, lasting fabrics, and pieces that work harder in your wardrobe.",
   tagline: "Made for modern men",
-  copyrightText: "© {year} Eco Fashion. All rights reserved.",
+  copyrightText: "© {year} Hidden Urban. All rights reserved.",
   socialLinks: [
     { platform: "Instagram", url: "https://instagram.com", visible: true },
     { platform: "Facebook", url: "https://facebook.com", visible: true },

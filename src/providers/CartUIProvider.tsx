@@ -14,20 +14,59 @@ type CartUIContextValue = {
   openCart: () => void;
   closeCart: () => void;
   toggleCart: () => void;
+  isWishlistOpen: boolean;
+  openWishlist: () => void;
+  closeWishlist: () => void;
+  toggleWishlistDrawer: () => void;
 };
 
 const CartUIContext = createContext<CartUIContextValue | null>(null);
 
 export function CartUIProvider({ children }: { children: ReactNode }) {
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isWishlistOpen, setIsWishlistOpen] = useState(false);
 
-  const openCart = useCallback(() => setIsCartOpen(true), []);
+  const openCart = useCallback(() => {
+    setIsWishlistOpen(false);
+    setIsCartOpen(true);
+  }, []);
   const closeCart = useCallback(() => setIsCartOpen(false), []);
-  const toggleCart = useCallback(() => setIsCartOpen((open) => !open), []);
+  const toggleCart = useCallback(() => {
+    setIsWishlistOpen(false);
+    setIsCartOpen((open) => !open);
+  }, []);
+
+  const openWishlist = useCallback(() => {
+    setIsCartOpen(false);
+    setIsWishlistOpen(true);
+  }, []);
+  const closeWishlist = useCallback(() => setIsWishlistOpen(false), []);
+  const toggleWishlistDrawer = useCallback(() => {
+    setIsCartOpen(false);
+    setIsWishlistOpen((open) => !open);
+  }, []);
 
   const value = useMemo(
-    () => ({ isCartOpen, openCart, closeCart, toggleCart }),
-    [isCartOpen, openCart, closeCart, toggleCart],
+    () => ({
+      isCartOpen,
+      openCart,
+      closeCart,
+      toggleCart,
+      isWishlistOpen,
+      openWishlist,
+      closeWishlist,
+      toggleWishlistDrawer,
+    }),
+    [
+      isCartOpen,
+      openCart,
+      closeCart,
+      toggleCart,
+      isWishlistOpen,
+      openWishlist,
+      closeWishlist,
+      toggleWishlistDrawer,
+    ],
   );
 
   return <CartUIContext.Provider value={value}>{children}</CartUIContext.Provider>;

@@ -41,7 +41,7 @@ export function HeroSlider({ slides }: HeroSliderProps) {
               <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/35 to-transparent" />
               <div className="absolute inset-0 flex flex-col justify-end p-5 sm:p-8 lg:p-10">
                 <p className="mb-2 text-xs font-semibold tracking-[0.18em] text-white/80 uppercase">
-                  Eco Fashion
+                  Hidden Urban
                 </p>
                 <h2 className="max-w-xl text-2xl font-bold tracking-tight text-white sm:text-3xl lg:text-4xl">
                   {slide.title}
