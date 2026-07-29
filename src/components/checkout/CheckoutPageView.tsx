@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import PaymentsOutlinedIcon from "@mui/icons-material/PaymentsOutlined";
@@ -15,13 +15,17 @@ import {
 } from "@mui/material";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { CartItemRow } from "@/components/cart/CartItemRow";
 import { CartOrderSummary } from "@/components/cart/CartOrderSummary";
 import { useCart } from "@/hooks/useCart";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { BD_REGION_OPTIONS, BD_REGIONS } from "@/lib/constants/locations";
+import {
+  resolveShippingFee,
+  shippingEstimateForArea,
+} from "@/lib/shipping/calculate";
 import { placeStoreOrder } from "@/services/store-orders";
 
 type CheckoutFormValues = {
@@ -31,19 +35,19 @@ type CheckoutFormValues = {
   address: string;
   region: string;
   city: string;
+  deliveryAreaId: string;
   note: string;
 };
 
 const PHONE_PATTERN = /^(\+880|880|0)?1[3-9]\d{8}$/;
-
-const INSIDE_DHAKA_SHIPPING = 60;
-const OUTSIDE_DHAKA_SHIPPING = 120;
 
 export function CheckoutPageView() {
   const router = useRouter();
   const settings = useSiteSettings();
   const { cart, clearCart, updateQuantity, removeItem } = useCart();
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const defaultAreaId = settings.shippingAreas[0]?.id ?? "";
 
   const {
     register,
@@ -60,26 +64,42 @@ export function CheckoutPageView() {
       address: "",
       region: "Dhaka",
       city: "Dhaka",
+      deliveryAreaId: defaultAreaId,
       note: "",
     },
     mode: "onBlur",
   });
 
   const region = watch("region");
-  const city = watch("city");
+  const deliveryAreaId = watch("deliveryAreaId");
   const districts = BD_REGIONS[region] ?? [];
 
-  const shippingFee = useMemo(() => {
-    if (cart.subtotal >= settings.freeDeliveryMinimum) return 0;
-    return region === "Dhaka" && city === "Dhaka"
-      ? INSIDE_DHAKA_SHIPPING
-      : OUTSIDE_DHAKA_SHIPPING;
-  }, [cart.subtotal, settings.freeDeliveryMinimum, region, city]);
+  useEffect(() => {
+    if (!settings.shippingAreas.length) return;
+    const exists = settings.shippingAreas.some((area) => area.id === deliveryAreaId);
+    if (!exists) {
+      setValue("deliveryAreaId", settings.shippingAreas[0].id);
+    }
+  }, [settings.shippingAreas, deliveryAreaId, setValue]);
 
+  const areaIndex = Math.max(
+    0,
+    settings.shippingAreas.findIndex((area) => area.id === deliveryAreaId),
+  );
+
+  const shippingFee = useMemo(
+    () => resolveShippingFee(settings, areaIndex, cart.subtotal),
+    [settings, areaIndex, cart.subtotal],
+  );
+
+  const deliveryEstimate = shippingEstimateForArea(settings, areaIndex);
   const isEmpty = cart.items.length === 0;
 
   async function onSubmit(values: CheckoutFormValues) {
     setSubmitError(null);
+    const selectedArea =
+      settings.shippingAreas.find((area) => area.id === values.deliveryAreaId) ??
+      settings.shippingAreas[0];
     try {
       const order = await placeStoreOrder({
         customer: {
@@ -90,9 +110,11 @@ export function CheckoutPageView() {
           region: values.region,
           city: values.city,
           note: values.note,
+          deliveryArea: selectedArea?.name ?? "",
         },
         items: cart.items,
         shippingFee,
+        deliveryAreaId: selectedArea?.id ?? values.deliveryAreaId,
       });
       clearCart();
       const successParams = new URLSearchParams({
@@ -174,6 +196,36 @@ export function CheckoutPageView() {
                   type="email"
                   fullWidth
                   {...register("email")}
+                />
+                <Controller
+                  name="deliveryAreaId"
+                  control={control}
+                  rules={{ required: "Select a delivery area" }}
+                  render={({ field }) => (
+                    <FormControl fullWidth error={Boolean(errors.deliveryAreaId)}>
+                      <InputLabel id="delivery-area-label">Delivery area</InputLabel>
+                      <Select
+                        {...field}
+                        labelId="delivery-area-label"
+                        label="Delivery area"
+                      >
+                        {settings.shippingAreas.map((area) => (
+                          <MenuItem key={area.id} value={area.id}>
+                            {area.name}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                      {deliveryEstimate ? (
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{ mt: 0.75, ml: 0.25 }}
+                        >
+                          Estimated delivery: {deliveryEstimate}
+                        </Typography>
+                      ) : null}
+                    </FormControl>
+                  )}
                 />
                 <Controller
                   name="region"

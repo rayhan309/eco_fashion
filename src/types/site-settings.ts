@@ -4,6 +4,20 @@ export type SiteSocialLink = {
   visible: boolean;
 };
 
+export type SiteShippingArea = {
+  id: string;
+  name: string;
+};
+
+export type SiteShippingClass = {
+  id: string;
+  name: string;
+  description: string;
+  freeDelivery: boolean;
+  /** Fee (BDT) aligned by index with `shippingAreas`. */
+  fees: number[];
+};
+
 export type SiteSettings = {
   shopName: string;
   shopTagline: string;
@@ -23,7 +37,12 @@ export type SiteSettings = {
   city: string;
   supportHours: string;
   supportNote: string;
+  freeDeliveryEnabled: boolean;
   freeDeliveryMinimum: number;
+  shippingEstimateInsideDhaka: string;
+  shippingEstimateOutsideDhaka: string;
+  shippingAreas: SiteShippingArea[];
+  shippingClasses: SiteShippingClass[];
   socialLinks: SiteSocialLink[];
   metaPixelEnabled: boolean;
   metaPixelId: string;

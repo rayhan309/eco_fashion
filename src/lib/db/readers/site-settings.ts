@@ -3,7 +3,12 @@ import { getSeedModel } from "@/lib/seed/seed-model";
 import { DEFAULT_SITE_SETTINGS } from "@/lib/site-settings/defaults";
 import { expandBrandColors } from "@/lib/site-settings/colors";
 import { toPublicSiteSettings } from "@/lib/site-settings/public";
-import type { SiteSettings, SiteSocialLink } from "@/types/site-settings";
+import type {
+  SiteSettings,
+  SiteShippingArea,
+  SiteShippingClass,
+  SiteSocialLink,
+} from "@/types/site-settings";
 
 export { toPublicSiteSettings };
 
@@ -25,6 +30,43 @@ function mapSocialLinks(raw: unknown): SiteSocialLink[] {
       platform: String(row.platform ?? ""),
       url: String(row.url ?? ""),
       visible: row.visible !== false,
+    };
+  });
+}
+
+function mapShippingAreas(raw: unknown): SiteShippingArea[] {
+  if (!Array.isArray(raw) || raw.length === 0) {
+    return DEFAULT_SITE_SETTINGS.shippingAreas.map((area) => ({ ...area }));
+  }
+  return raw.map((item, index) => {
+    const row = record(item);
+    return {
+      id: String(row.id ?? `area-${index}`),
+      name: String(row.name ?? `Area ${index + 1}`),
+    };
+  });
+}
+
+function mapShippingClasses(raw: unknown, areaCount: number): SiteShippingClass[] {
+  if (!Array.isArray(raw) || raw.length === 0) {
+    return DEFAULT_SITE_SETTINGS.shippingClasses.map((cls) => ({
+      ...cls,
+      fees: [...cls.fees],
+    }));
+  }
+  return raw.map((item, index) => {
+    const row = record(item);
+    const feesRaw = Array.isArray(row.fees) ? row.fees : [];
+    const fees = Array.from({ length: Math.max(areaCount, 1) }, (_, feeIndex) => {
+      const n = Number(feesRaw[feeIndex] ?? 0);
+      return Number.isFinite(n) && n >= 0 ? n : 0;
+    });
+    return {
+      id: String(row.id ?? `class-${index}`),
+      name: String(row.name ?? `Class ${index + 1}`),
+      description: String(row.description ?? ""),
+      freeDelivery: Boolean(row.freeDelivery),
+      fees,
     };
   });
 }
@@ -55,6 +97,8 @@ export function mapSiteSettingsDoc(doc: Record<string, unknown>): SiteSettings {
   const primary =
     String(doc.primaryColor ?? doc.brandColor ?? DEFAULT_SITE_SETTINGS.primaryColor);
   const colors = expandBrandColors(primary);
+  const shippingAreas = mapShippingAreas(doc.shippingAreas);
+  const shippingClasses = mapShippingClasses(doc.shippingClasses, shippingAreas.length);
 
   const mapped: SiteSettings = {
     shopName: String(doc.shopName ?? doc.businessName ?? DEFAULT_SITE_SETTINGS.shopName),
@@ -77,7 +121,19 @@ export function mapSiteSettingsDoc(doc: Record<string, unknown>): SiteSettings {
     city: String(doc.city ?? DEFAULT_SITE_SETTINGS.city),
     supportHours: String(doc.supportHours ?? DEFAULT_SITE_SETTINGS.supportHours),
     supportNote: String(doc.supportNote ?? DEFAULT_SITE_SETTINGS.supportNote),
+    freeDeliveryEnabled:
+      doc.freeDeliveryEnabled === undefined
+        ? DEFAULT_SITE_SETTINGS.freeDeliveryEnabled
+        : Boolean(doc.freeDeliveryEnabled),
     freeDeliveryMinimum: Number(doc.freeDeliveryMinimum ?? DEFAULT_SITE_SETTINGS.freeDeliveryMinimum),
+    shippingEstimateInsideDhaka: String(
+      doc.shippingEstimateInsideDhaka ?? DEFAULT_SITE_SETTINGS.shippingEstimateInsideDhaka,
+    ),
+    shippingEstimateOutsideDhaka: String(
+      doc.shippingEstimateOutsideDhaka ?? DEFAULT_SITE_SETTINGS.shippingEstimateOutsideDhaka,
+    ),
+    shippingAreas,
+    shippingClasses,
     socialLinks: mapSocialLinks(doc.socialLinks),
     metaPixelEnabled: Boolean(doc.metaPixelEnabled ?? false),
     metaPixelId: String(doc.metaPixelId ?? ""),
@@ -105,5 +161,13 @@ export async function getSiteSettingsFromDbOrFallback(): Promise<SiteSettings> {
   } catch (error) {
     console.error("[db] site_settings read failed:", error);
   }
-  return { ...DEFAULT_SITE_SETTINGS };
+  return {
+    ...DEFAULT_SITE_SETTINGS,
+    shippingAreas: DEFAULT_SITE_SETTINGS.shippingAreas.map((area) => ({ ...area })),
+    shippingClasses: DEFAULT_SITE_SETTINGS.shippingClasses.map((cls) => ({
+      ...cls,
+      fees: [...cls.fees],
+    })),
+    socialLinks: DEFAULT_SITE_SETTINGS.socialLinks.map((link) => ({ ...link })),
+  };
 }

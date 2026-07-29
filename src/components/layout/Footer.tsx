@@ -63,7 +63,13 @@ export function Footer() {
               const text =
                 "text" in item
                   ? item.text
-                  : `On orders over ৳${settings.freeDeliveryMinimum.toLocaleString("en-BD")}`;
+                  : settings.freeDeliveryEnabled
+                    ? `On orders over ৳${settings.freeDeliveryMinimum.toLocaleString("en-BD")}`
+                    : settings.shippingAreas?.[0]
+                      ? `From ৳${(
+                          settings.shippingClasses?.[0]?.fees?.[0] ?? 0
+                        ).toLocaleString("en-BD")}`
+                      : "Delivery rates at checkout";
               return (
                 <div
                   key={item.title}

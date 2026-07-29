@@ -1,5 +1,10 @@
 import { dbConnect } from "@/lib/dbConnect";
+import { getSiteSettingsFromDbOrFallback } from "@/lib/db/readers/site-settings";
 import { getSeedModel } from "@/lib/seed/seed-model";
+import {
+  findShippingAreaIndex,
+  resolveShippingFee,
+} from "@/lib/shipping/calculate";
 import type { AdminOrder, AdminOrderStatus } from "@/types/admin-order";
 import { ADMIN_ORDER_STATUSES } from "@/types/admin-order";
 import type { CreateStoreOrderInput, StoreOrder } from "@/types/store-order";
@@ -37,6 +42,7 @@ export function mapStoreOrderDoc(doc: Record<string, unknown>): StoreOrder {
       region: String(customer.region ?? ""),
       city: String(customer.city ?? ""),
       note: String(customer.note ?? ""),
+      deliveryArea: String(customer.deliveryArea ?? ""),
     },
     items: items.map((row) => {
       const item = (row ?? {}) as Record<string, unknown>;
@@ -93,11 +99,18 @@ export async function createStoreOrderInDb(
   }
 
   await dbConnect();
+  const settings = await getSiteSettingsFromDbOrFallback();
+  const areaIndex = findShippingAreaIndex(
+    settings,
+    input.deliveryAreaId || input.customer.deliveryArea || "",
+  );
+  const selectedArea = settings.shippingAreas[areaIndex];
+
   const Model = getSeedModel("orders");
   const now = new Date().toISOString();
   const legacyId = `ord-${Date.now()}`;
   const subtotal = input.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const shippingFee = Math.max(0, Number(input.shippingFee) || 0);
+  const shippingFee = resolveShippingFee(settings, areaIndex, subtotal);
   const total = subtotal + shippingFee;
   const count = itemCount(input.items);
   const summary = itemsSummary(input.items);
@@ -114,6 +127,11 @@ export async function createStoreOrderInDb(
       region: input.customer.region.trim(),
       city: input.customer.city.trim(),
       note: input.customer.note.trim(),
+      deliveryArea: (
+        input.customer.deliveryArea ||
+        selectedArea?.name ||
+        ""
+      ).trim(),
     },
     items: input.items,
     itemCount: count,
@@ -202,4 +220,163 @@ export async function getStoreOrderByNumberAndPhone(
     return null;
   }
   return order;
+}
+
+function mapLegacyAdminOrderToStoreOrder(doc: Record<string, unknown>): StoreOrder {
+  const status = String(doc.status ?? "new_order");
+  const createdAt = String(doc.createdAt ?? new Date().toISOString());
+  const total = Number(doc.total ?? 0);
+  return {
+    id: String(doc.legacyId ?? doc.id ?? ""),
+    orderNumber: String(doc.orderNumber ?? ""),
+    status: ADMIN_ORDER_STATUSES.includes(status as AdminOrderStatus)
+      ? (status as AdminOrderStatus)
+      : "new_order",
+    customer: {
+      name: String(doc.customerName ?? ""),
+      phone: String(doc.customerPhone ?? ""),
+      email: String(doc.customerEmail ?? ""),
+      address: String(doc.customerAddress ?? ""),
+      region: String(doc.customerRegion ?? ""),
+      city: String(doc.customerCity ?? ""),
+      note: String(doc.note ?? doc.customerNote ?? ""),
+      deliveryArea: String(doc.deliveryArea ?? ""),
+    },
+    items: [],
+    itemCount: Number(doc.itemCount ?? 0),
+    itemsSummary: String(doc.itemsSummary ?? ""),
+    subtotal: Number(doc.subtotal ?? total),
+    shippingFee: Number(doc.shippingFee ?? 0),
+    total,
+    currency: "BDT",
+    paymentMethod: "cod",
+    createdAt,
+    updatedAt: String(doc.updatedAt ?? createdAt),
+  };
+}
+
+export type UpdateAdminOrderInput = {
+  status: AdminOrderStatus;
+  customer: {
+    name: string;
+    phone: string;
+    email: string;
+    address: string;
+    region: string;
+    city: string;
+    note: string;
+    deliveryArea?: string;
+  };
+};
+
+export async function getAdminOrderById(id: string): Promise<StoreOrder | null> {
+  const normalized = id.trim();
+  if (!normalized) return null;
+
+  await dbConnect();
+
+  const Orders = getSeedModel("orders");
+  const storeDoc = await Orders.findOne({ legacyId: normalized }).lean();
+  if (storeDoc) {
+    return mapStoreOrderDoc(storeDoc as unknown as Record<string, unknown>);
+  }
+
+  const Legacy = getSeedModel("admin_orders");
+  const legacyDoc = await Legacy.findOne({ legacyId: normalized }).lean();
+  if (legacyDoc) {
+    return mapLegacyAdminOrderToStoreOrder(legacyDoc as unknown as Record<string, unknown>);
+  }
+
+  return null;
+}
+
+export async function updateAdminOrderInDb(
+  id: string,
+  input: UpdateAdminOrderInput,
+): Promise<StoreOrder> {
+  const normalized = id.trim();
+  if (!normalized) throw new Error("Order not found");
+
+  await dbConnect();
+  const now = new Date().toISOString();
+  const existing = await getAdminOrderById(normalized);
+  const customer = {
+    name: input.customer.name.trim(),
+    phone: input.customer.phone.trim(),
+    email: input.customer.email.trim(),
+    address: input.customer.address.trim(),
+    region: input.customer.region.trim(),
+    city: input.customer.city.trim(),
+    note: input.customer.note.trim(),
+    deliveryArea: (
+      input.customer.deliveryArea ??
+      existing?.customer.deliveryArea ??
+      ""
+    ).trim(),
+  };
+
+  if (!customer.name || !customer.phone) {
+    throw new Error("Name and phone are required");
+  }
+
+  const Orders = getSeedModel("orders");
+  const storeUpdated = await Orders.findOneAndUpdate(
+    { legacyId: normalized },
+    {
+      $set: {
+        status: input.status,
+        customer,
+        updatedAt: now,
+      },
+    },
+    { new: true },
+  ).lean();
+
+  if (storeUpdated) {
+    return mapStoreOrderDoc(storeUpdated as unknown as Record<string, unknown>);
+  }
+
+  const Legacy = getSeedModel("admin_orders");
+  const legacyUpdated = await Legacy.findOneAndUpdate(
+    { legacyId: normalized },
+    {
+      $set: {
+        status: input.status,
+        customerName: customer.name,
+        customerPhone: customer.phone,
+        customerEmail: customer.email,
+        customerAddress: customer.address,
+        customerRegion: customer.region,
+        customerCity: customer.city,
+        note: customer.note,
+        updatedAt: now,
+      },
+    },
+    { new: true },
+  ).lean();
+
+  if (legacyUpdated) {
+    return mapLegacyAdminOrderToStoreOrder(
+      legacyUpdated as unknown as Record<string, unknown>,
+    );
+  }
+
+  throw new Error("Order not found");
+}
+
+export async function deleteAdminOrderInDb(id: string): Promise<void> {
+  const normalized = id.trim();
+  if (!normalized) throw new Error("Order not found");
+
+  await dbConnect();
+
+  const Orders = getSeedModel("orders");
+  const storeResult = await Orders.deleteOne({ legacyId: normalized });
+  if (storeResult.deletedCount > 0) return;
+
+  const Legacy = getSeedModel("admin_orders");
+  const legacyResult = await Legacy.deleteOne({ legacyId: normalized });
+  if (legacyResult.deletedCount > 0) return;
+
+  throw new Error("Order not found");
 }

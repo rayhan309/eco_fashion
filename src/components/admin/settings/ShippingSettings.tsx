@@ -21,14 +21,17 @@ import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { SettingsSection } from "@/components/admin/settings/SettingsSection";
 import { useAdminSiteSettings } from "@/hooks/useAdminSiteSettings";
 import { ADMIN_ACCENT } from "@/lib/constants/admin";
+import { DEFAULT_SITE_SETTINGS } from "@/lib/site-settings/defaults";
+import type { SiteSettings } from "@/types/site-settings";
 
 type ShippingFormValues = {
   freeShippingEnabled: boolean;
   freeShippingMinimum: string;
   estimatedInsideDhaka: string;
   estimatedOutsideDhaka: string;
-  areas: { name: string }[];
+  areas: { id: string; name: string }[];
   classes: {
+    id: string;
     name: string;
     description: string;
     freeDelivery: boolean;
@@ -39,6 +42,27 @@ type ShippingFormValues = {
 function parseAmount(value: string) {
   const n = Number(String(value).replace(/,/g, "").trim());
   return Number.isFinite(n) ? n : NaN;
+}
+
+function newId(prefix: string) {
+  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function settingsToForm(settings: SiteSettings): ShippingFormValues {
+  return {
+    freeShippingEnabled: settings.freeDeliveryEnabled,
+    freeShippingMinimum: String(settings.freeDeliveryMinimum),
+    estimatedInsideDhaka: settings.shippingEstimateInsideDhaka,
+    estimatedOutsideDhaka: settings.shippingEstimateOutsideDhaka,
+    areas: settings.shippingAreas.map((area) => ({ id: area.id, name: area.name })),
+    classes: settings.shippingClasses.map((cls) => ({
+      id: cls.id,
+      name: cls.name,
+      description: cls.description,
+      freeDelivery: cls.freeDelivery,
+      fees: settings.shippingAreas.map((_, index) => String(cls.fees[index] ?? 0)),
+    })),
+  };
 }
 
 const addClassButtonSx = {
@@ -80,30 +104,17 @@ export function ShippingSettings() {
     watch,
     getValues,
     setValue,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<ShippingFormValues>({
-    defaultValues: {
-      freeShippingEnabled: true,
-      freeShippingMinimum: "5000",
-      estimatedInsideDhaka: "1–2 business days",
-      estimatedOutsideDhaka: "2–4 business days",
-      areas: [{ name: "ঢাকার ভেতরে" }, { name: "ঢাকার বাহিরে" }],
-      classes: [
-        {
-          name: "Standard",
-          description: "Default shipping class",
-          freeDelivery: false,
-          fees: ["60", "120"],
-        },
-      ],
-    },
+    defaultValues: settingsToForm(DEFAULT_SITE_SETTINGS),
     mode: "onBlur",
   });
 
   useEffect(() => {
     if (!siteSettings) return;
-    setValue("freeShippingMinimum", String(siteSettings.freeDeliveryMinimum));
-  }, [siteSettings, setValue]);
+    reset(settingsToForm(siteSettings));
+  }, [siteSettings, reset]);
 
   const {
     fields: areaFields,
@@ -154,7 +165,7 @@ export function ShippingSettings() {
   }
 
   function handleAddArea() {
-    appendArea({ name: "" });
+    appendArea({ id: newId("area"), name: "" });
     syncFeesAfterAreaAdd();
   }
 
@@ -167,6 +178,7 @@ export function ShippingSettings() {
   function handleAddClass() {
     const areaCount = getValues("areas").length;
     appendClass({
+      id: newId("class"),
       name: "",
       description: "",
       freeDelivery: false,
@@ -176,13 +188,38 @@ export function ShippingSettings() {
 
   async function onSubmit(values: ShippingFormValues) {
     const minimum = parseAmount(values.freeShippingMinimum);
-    if (!Number.isFinite(minimum) || minimum < 0) {
+    if (values.freeShippingEnabled && (!Number.isFinite(minimum) || minimum < 0)) {
       setSaveError("Enter a valid free delivery minimum amount.");
       return;
     }
+
+    const shippingAreas = values.areas.map((area, index) => ({
+      id: area.id || newId("area"),
+      name: area.name.trim() || `Area ${index + 1}`,
+    }));
+
+    const shippingClasses = values.classes.map((cls, index) => ({
+      id: cls.id || newId("class"),
+      name: cls.name.trim() || `Class ${index + 1}`,
+      description: cls.description.trim(),
+      freeDelivery: cls.freeDelivery,
+      fees: shippingAreas.map((_, feeIndex) => {
+        if (cls.freeDelivery) return 0;
+        const n = parseAmount(cls.fees[feeIndex] ?? "0");
+        return Number.isFinite(n) && n >= 0 ? n : 0;
+      }),
+    }));
+
     setSaveError(null);
     try {
-      await saveMutation.mutateAsync({ freeDeliveryMinimum: minimum });
+      await saveMutation.mutateAsync({
+        freeDeliveryEnabled: values.freeShippingEnabled,
+        freeDeliveryMinimum: Number.isFinite(minimum) ? minimum : 0,
+        shippingEstimateInsideDhaka: values.estimatedInsideDhaka.trim(),
+        shippingEstimateOutsideDhaka: values.estimatedOutsideDhaka.trim(),
+        shippingAreas,
+        shippingClasses,
+      });
       setSaved(true);
       window.setTimeout(() => setSaved(false), 3000);
     } catch {
@@ -290,6 +327,7 @@ export function ShippingSettings() {
                       gap: 1,
                     }}
                   >
+                    <input type="hidden" {...register(`areas.${index}.id`)} />
                     <TextField
                       label="Area Name"
                       fullWidth
@@ -356,6 +394,7 @@ export function ShippingSettings() {
                         bgcolor: "rgba(248,250,252,0.9)",
                       }}
                     >
+                      <input type="hidden" {...register(`classes.${classIndex}.id`)} />
                       <Box
                         sx={{
                           display: "flex",

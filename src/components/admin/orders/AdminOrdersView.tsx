@@ -14,6 +14,11 @@ import {
   Button,
   Checkbox,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   FormControl,
   IconButton,
   InputLabel,
@@ -29,14 +34,20 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { AdminOrderDetailDialog } from "@/components/admin/orders/AdminOrderDetailDialog";
+import { AdminOrderEditDialog } from "@/components/admin/orders/AdminOrderEditDialog";
+import { useToast } from "@/context/toast/ToastProvider";
+import { ADMIN_ACCENT } from "@/lib/constants/admin";
+import { queryKeys } from "@/lib/queries/query-keys";
+import { deleteAdminOrder } from "@/services/admin-order-mutations";
 import {
   ADMIN_ORDER_STATUS_FILTERS,
   ADMIN_ORDER_STATUS_LABELS,
   type AdminOrder,
   type AdminOrderStatus,
 } from "@/types/admin-order";
-import { ADMIN_ACCENT } from "@/lib/constants/admin";
 
 const PAGE_SIZE = 10;
 
@@ -121,11 +132,36 @@ type AdminOrdersViewProps = {
 };
 
 export function AdminOrdersView({ orders }: AdminOrdersViewProps) {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | AdminOrderStatus>("all");
   const [dateRange, setDateRange] = useState<DateRange>("lifetime");
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [viewOrderId, setViewOrderId] = useState<string | null>(null);
+  const [editOrderId, setEditOrderId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<AdminOrder | null>(null);
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteAdminOrder(id),
+    onSuccess: async () => {
+      const deletedId = deleteTarget?.id;
+      setDeleteTarget(null);
+      if (deletedId) {
+        setSelected((prev) => {
+          const next = new Set(prev);
+          next.delete(deletedId);
+          return next;
+        });
+      }
+      showToast("Order deleted successfully");
+      await queryClient.invalidateQueries({ queryKey: queryKeys.admin.orders() });
+    },
+    onError: (error) => {
+      showToast(error instanceof Error ? error.message : "Failed to delete order", "error");
+    },
+  });
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -476,17 +512,29 @@ export function AdminOrdersView({ orders }: AdminOrdersViewProps) {
                             Send to courier
                           </Button>
                           <Tooltip title="View">
-                            <IconButton size="small" aria-label="View order">
+                            <IconButton
+                              size="small"
+                              aria-label="View order"
+                              onClick={() => setViewOrderId(order.id)}
+                            >
                               <VisibilityOutlinedIcon sx={{ fontSize: 18 }} />
                             </IconButton>
                           </Tooltip>
                           <Tooltip title="Edit">
-                            <IconButton size="small" aria-label="Edit order">
+                            <IconButton
+                              size="small"
+                              aria-label="Edit order"
+                              onClick={() => setEditOrderId(order.id)}
+                            >
                               <EditOutlinedIcon sx={{ fontSize: 18, color: ADMIN_ACCENT }} />
                             </IconButton>
                           </Tooltip>
                           <Tooltip title="Delete">
-                            <IconButton size="small" aria-label="Delete order">
+                            <IconButton
+                              size="small"
+                              aria-label="Delete order"
+                              onClick={() => setDeleteTarget(order)}
+                            >
                               <DeleteOutlineRoundedIcon
                                 sx={{ fontSize: 18, color: "#dc2626" }}
                               />
@@ -544,6 +592,52 @@ export function AdminOrdersView({ orders }: AdminOrdersViewProps) {
           </Box>
         </Box>
       </Box>
+
+      <AdminOrderDetailDialog
+        orderId={viewOrderId}
+        onClose={() => setViewOrderId(null)}
+        onEdit={(id) => {
+          setViewOrderId(null);
+          setEditOrderId(id);
+        }}
+      />
+
+      <AdminOrderEditDialog
+        orderId={editOrderId}
+        onClose={() => setEditOrderId(null)}
+      />
+
+      <Dialog
+        open={Boolean(deleteTarget)}
+        onClose={() => !deleteMutation.isPending && setDeleteTarget(null)}
+      >
+        <DialogTitle>Delete order?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {deleteTarget
+              ? `Order #${deleteTarget.orderNumber} for ${deleteTarget.customerName} will be permanently removed.`
+              : ""}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setDeleteTarget(null)}
+            disabled={deleteMutation.isPending}
+            sx={{ textTransform: "none" }}
+          >
+            Cancel
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            disabled={deleteMutation.isPending || !deleteTarget}
+            onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+            sx={{ textTransform: "none" }}
+          >
+            {deleteMutation.isPending ? "Deleting…" : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

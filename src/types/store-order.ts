@@ -9,6 +9,8 @@ export type StoreOrderCustomer = {
   region: string;
   city: string;
   note: string;
+  /** Selected shipping area label from site settings. */
+  deliveryArea: string;
 };
 
 export type StoreOrderItem = CartItem;
@@ -34,4 +36,5 @@ export type CreateStoreOrderInput = {
   customer: StoreOrderCustomer;
   items: StoreOrderItem[];
   shippingFee: number;
+  deliveryAreaId?: string;
 };

@@ -25,7 +25,23 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   city: "Dhaka",
   supportHours: "Sat–Thu, 10:00–19:00",
   supportNote: "Our support team is here for sizing, orders, and delivery questions.",
+  freeDeliveryEnabled: true,
   freeDeliveryMinimum: 5000,
+  shippingEstimateInsideDhaka: "1–2 business days",
+  shippingEstimateOutsideDhaka: "2–4 business days",
+  shippingAreas: [
+    { id: "area-inside-dhaka", name: "ঢাকার ভেতরে" },
+    { id: "area-outside-dhaka", name: "ঢাকার বাহিরে" },
+  ],
+  shippingClasses: [
+    {
+      id: "class-standard",
+      name: "Standard",
+      description: "Default shipping class",
+      freeDelivery: false,
+      fees: [60, 120],
+    },
+  ],
   socialLinks: [
     { platform: "Instagram", url: "https://instagram.com", visible: true },
     { platform: "Facebook", url: "https://facebook.com", visible: true },

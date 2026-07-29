@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { formatCurrency } from "@/lib/formatters/currency";
+import { estimateDefaultShippingFee } from "@/lib/shipping/calculate";
 import type { Cart } from "@/types/cart";
 
 type CartOrderSummaryProps = {
@@ -20,8 +21,6 @@ type CartOrderSummaryProps = {
   confirmDisabled?: boolean;
 };
 
-const DEFAULT_DELIVERY = 60;
-
 export function CartOrderSummary({
   cart,
   deliveryCharge,
@@ -36,11 +35,15 @@ export function CartOrderSummary({
 
   const shipping = useMemo(() => {
     if (typeof deliveryCharge === "number") return deliveryCharge;
-    if (cart.subtotal >= settings.freeDeliveryMinimum) return 0;
-    return DEFAULT_DELIVERY;
-  }, [cart.subtotal, deliveryCharge, settings.freeDeliveryMinimum]);
+    return estimateDefaultShippingFee(settings, cart.subtotal);
+  }, [cart.subtotal, deliveryCharge, settings]);
 
   const amountToPay = cart.subtotal + shipping;
+  const showFreeThresholdHint =
+    settings.freeDeliveryEnabled &&
+    settings.freeDeliveryMinimum > 0 &&
+    shipping > 0 &&
+    cart.subtotal < settings.freeDeliveryMinimum;
 
   return (
     <Box
@@ -89,7 +92,7 @@ export function CartOrderSummary({
           </Typography>
         </Stack>
 
-        {shipping > 0 && cart.subtotal < settings.freeDeliveryMinimum ? (
+        {showFreeThresholdHint ? (
           <Typography variant="caption" color="text.secondary" sx={{ pb: 1.25 }}>
             Free delivery over {formatCurrency(settings.freeDeliveryMinimum, "BDT")}
           </Typography>
