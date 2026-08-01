@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import type { HeroSideBanner } from "@/data/hero";
+import type { HeroSideBanner } from "@/types/hero";
 
 type HeroSideCardProps = {
   banner: HeroSideBanner;

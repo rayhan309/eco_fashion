@@ -22,5 +22,5 @@ export function AdminCategoriesPageContent() {
 
   if (isError || !data) return null;
 
-  return <AdminCategoriesView initialCategories={data} />;
+  return <AdminCategoriesView categories={data} />;
 }

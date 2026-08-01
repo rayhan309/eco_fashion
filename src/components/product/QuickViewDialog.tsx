@@ -78,7 +78,8 @@ export function QuickViewDialog({
                 alt={image.alt}
                 fill
                 sizes="(max-width: 768px) 100vw, 50vw"
-                className="object-cover"
+                className="object-contain object-center"
+                style={{ objectFit: "contain" }}
               />
             ) : null}
           </div>
@@ -111,9 +112,11 @@ export function QuickViewDialog({
               ) : null}
             </Stack>
 
-            <Typography variant="body2" color="text.secondary">
-              Sizes: {product.attributes.sizes.join(", ")}
-            </Typography>
+            {product.attributes.sizes.length > 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                Sizes: {product.attributes.sizes.join(", ")}
+              </Typography>
+            ) : null}
             <Typography variant="body2" color="text.secondary">
               Rating: {product.ratings.average} ({product.ratings.count})
             </Typography>

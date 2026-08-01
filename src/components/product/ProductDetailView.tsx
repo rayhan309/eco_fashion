@@ -70,10 +70,10 @@ export function ProductDetailView({ product, relatedProducts }: ProductDetailVie
 
   const images = product.images.length > 0 ? product.images : [{ url: "", alt: product.title }];
   const [activeImage, setActiveImage] = useState(0);
-  const sizes = product.attributes.sizes.length > 0 ? product.attributes.sizes : (["M"] as ProductSize[]);
+  const sizes = product.attributes.sizes;
   const colors =
     product.attributes.colors.length > 0 ? product.attributes.colors : ["Default"];
-  const [selectedSize, setSelectedSize] = useState<ProductSize>(sizes[0]);
+  const [selectedSize, setSelectedSize] = useState<ProductSize>(sizes[0] ?? "M");
   const [selectedColor, setSelectedColor] = useState(colors[0]);
   const [quantity, setQuantity] = useState(1);
   const [shareHint, setShareHint] = useState<string | null>(null);
@@ -164,18 +164,20 @@ export function ProductDetailView({ product, relatedProducts }: ProductDetailVie
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-12 xl:gap-16">
         <div className="flex flex-col gap-4">
           <div className="relative overflow-hidden rounded-lg border border-[rgba(32,49,45,0.08)] bg-[#f6f3ed]">
-            <div className="relative aspect-[4/5] sm:aspect-[3/4]">
+            <div className="relative w-full">
               {images[activeImage]?.url ? (
                 <Image
                   src={images[activeImage].url}
                   alt={images[activeImage].alt || product.title}
-                  fill
+                  width={1200}
+                  height={1500}
                   priority
                   sizes="(max-width: 1024px) 100vw, 50vw"
-                  className="object-cover"
+                  className="!h-auto !w-full !max-w-full"
+                  style={{ width: "100%", height: "auto" }}
                 />
               ) : (
-                <div className="flex h-full items-center justify-center text-sm text-[#61716a]">
+                <div className="flex aspect-[4/5] items-center justify-center text-sm text-[#61716a]">
                   No image
                 </div>
               )}
@@ -230,7 +232,14 @@ export function ProductDetailView({ product, relatedProducts }: ProductDetailVie
                   }`}
                 >
                   {img.url ? (
-                    <Image src={img.url} alt="" fill sizes="80px" className="object-cover" />
+                    <Image
+                      src={img.url}
+                      alt=""
+                      fill
+                      sizes="80px"
+                      className="object-contain object-center"
+                      style={{ objectFit: "contain" }}
+                    />
                   ) : null}
                 </button>
               ))}
@@ -276,7 +285,7 @@ export function ProductDetailView({ product, relatedProducts }: ProductDetailVie
             </p>
           ) : null}
 
-          {sizes.length > 1 ? (
+          {sizes.length > 0 ? (
             <div>
               <p className="mb-2 text-xs font-bold tracking-[0.1em] text-[#20312d] uppercase">
                 Size
@@ -467,7 +476,7 @@ export function ProductDetailView({ product, relatedProducts }: ProductDetailVie
               View all
             </Link>
           </div>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 lg:gap-5">
+          <div className="grid grid-cols-2 items-start gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5 lg:gap-4">
             {relatedProducts.map((item, index) => (
               <CollectionProductCard key={item.id} product={item} index={index} />
             ))}

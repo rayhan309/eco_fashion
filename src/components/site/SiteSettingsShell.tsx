@@ -4,6 +4,7 @@ import { QueryHydrationBoundary } from "@/components/query/QueryHydrationBoundar
 import { SiteSettingsRoot } from "@/components/site/SiteSettingsRoot";
 import { getQueryClient } from "@/lib/queries/get-query-client";
 import { queryKeys } from "@/lib/queries/query-keys";
+import { getCategories } from "@/services/categories";
 import { getPublicSiteSettings } from "@/services/site-settings";
 
 type SiteSettingsShellProps = {
@@ -13,10 +14,16 @@ type SiteSettingsShellProps = {
 export async function SiteSettingsShell({ children }: SiteSettingsShellProps) {
   const queryClient = getQueryClient();
 
-  await queryClient.prefetchQuery({
-    queryKey: queryKeys.site.settings(),
-    queryFn: getPublicSiteSettings,
-  });
+  await Promise.all([
+    queryClient.prefetchQuery({
+      queryKey: queryKeys.site.settings(),
+      queryFn: getPublicSiteSettings,
+    }),
+    queryClient.prefetchQuery({
+      queryKey: queryKeys.site.categories(),
+      queryFn: getCategories,
+    }),
+  ]);
 
   return (
     <QueryHydrationBoundary state={dehydrate(queryClient)}>

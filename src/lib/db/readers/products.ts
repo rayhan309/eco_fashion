@@ -8,7 +8,7 @@ import {
 } from "@/lib/products/variant-utils";
 import type { Product, ProductImage, ProductSize } from "@/types/product";
 
-const DEFAULT_SIZES: ProductSize[] = ["S", "M", "L", "XL"];
+const APPAREL_SIZES = new Set(["XS", "S", "M", "L", "XL", "XXL"]);
 
 function record(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
@@ -34,14 +34,17 @@ function mapInventory(value: unknown): Product["inventory"] {
   };
 }
 
+function toApparelSizes(values: unknown): ProductSize[] {
+  if (!Array.isArray(values)) return [];
+  return values
+    .map(String)
+    .filter((s): s is ProductSize => APPAREL_SIZES.has(s));
+}
+
 function mapAttributes(value: unknown): Product["attributes"] {
   const o = record(value);
-  const sizesRaw = Array.isArray(o.sizes) ? o.sizes.map(String) : DEFAULT_SIZES;
-  const sizes = sizesRaw.filter((s): s is ProductSize =>
-    ["XS", "S", "M", "L", "XL", "XXL"].includes(s),
-  );
   return {
-    sizes: sizes.length > 0 ? sizes : DEFAULT_SIZES,
+    sizes: toApparelSizes(o.sizes),
     colors: Array.isArray(o.colors) ? o.colors.map(String) : [],
     material: String(o.material ?? ""),
     fit: String(o.fit ?? ""),
@@ -120,14 +123,8 @@ function mapAdminProductDoc(doc: Record<string, unknown>): Product {
     discountPercent = summary.discountPercent;
   }
 
-  const sizeLabels = variantSizeOptions(variants);
-  const sizes: ProductSize[] =
-    sizeLabels.length > 0
-      ? sizeLabels.filter((s): s is ProductSize =>
-          ["XS", "S", "M", "L", "XL", "XXL"].includes(s),
-        )
-      : DEFAULT_SIZES;
-  const displaySizes = sizes.length > 0 ? sizes : DEFAULT_SIZES;
+  const sizeLabels = productType === "variable" ? variantSizeOptions(variants) : [];
+  const displaySizes = toApparelSizes(sizeLabels);
 
   const mainImageUrl = String(doc.mainImageUrl ?? "");
   const galleryUrls = Array.isArray(doc.galleryUrls)

@@ -1,3 +1,5 @@
+import type { HeroSideBanner, HeroSlide } from "@/types/hero";
+
 export type SiteSocialLink = {
   platform: string;
   url: string;
@@ -43,6 +45,8 @@ export type SiteSettings = {
   shippingEstimateOutsideDhaka: string;
   shippingAreas: SiteShippingArea[];
   shippingClasses: SiteShippingClass[];
+  heroSlides: HeroSlide[];
+  heroSideBanners: HeroSideBanner[];
   socialLinks: SiteSocialLink[];
   metaPixelEnabled: boolean;
   metaPixelId: string;

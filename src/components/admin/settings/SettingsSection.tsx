@@ -55,23 +55,36 @@ export function SettingsSection({
 type SettingsPageHeaderProps = {
   title: string;
   description: string;
+  action?: ReactNode;
 };
 
-export function SettingsPageHeader({ title, description }: SettingsPageHeaderProps) {
+export function SettingsPageHeader({ title, description, action }: SettingsPageHeaderProps) {
   return (
-    <Box sx={{ mb: 2.5 }}>
-      <Typography
-        sx={{
-          fontSize: { xs: "1.25rem", sm: "1.4rem" },
-          fontWeight: 700,
-          letterSpacing: "-0.02em",
-        }}
-      >
-        {title}
-      </Typography>
-      <Typography sx={{ mt: 0.5, fontSize: "0.9rem", color: "text.secondary", maxWidth: 640 }}>
-        {description}
-      </Typography>
+    <Box
+      sx={{
+        mb: 2.5,
+        display: "flex",
+        flexDirection: { xs: "column", sm: "row" },
+        alignItems: { sm: "flex-start" },
+        justifyContent: "space-between",
+        gap: 2,
+      }}
+    >
+      <Box>
+        <Typography
+          sx={{
+            fontSize: { xs: "1.25rem", sm: "1.4rem" },
+            fontWeight: 700,
+            letterSpacing: "-0.02em",
+          }}
+        >
+          {title}
+        </Typography>
+        <Typography sx={{ mt: 0.5, fontSize: "0.9rem", color: "text.secondary", maxWidth: 640 }}>
+          {description}
+        </Typography>
+      </Box>
+      {action ?? null}
     </Box>
   );
 }

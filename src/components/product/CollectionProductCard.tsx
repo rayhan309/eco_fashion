@@ -21,9 +21,9 @@ type CollectionProductCardProps = {
 };
 
 const actionBtnClass =
-  "flex h-7 w-7 items-center justify-center rounded-md border border-[rgba(32,49,45,0.1)] bg-white text-[#20312d] shadow-sm transition-colors hover:border-[#1f6f5b] hover:bg-[#1f6f5b] hover:text-white sm:h-9 sm:w-9 md:h-10 md:w-10";
+  "flex h-6 w-6 items-center justify-center rounded-md border border-[rgba(32,49,45,0.1)] bg-white text-[#20312d] shadow-sm transition-colors hover:border-[#1f6f5b] hover:bg-[#1f6f5b] hover:text-white sm:h-7 sm:w-7 md:h-8 md:w-8";
 
-const actionIconSx = { fontSize: { xs: 14, sm: 16, md: 18 } };
+const actionIconSx = { fontSize: { xs: 12, sm: 14, md: 15 } };
 export function CollectionProductCard({ product, index = 0 }: CollectionProductCardProps) {
   const [quickViewOpen, setQuickViewOpen] = useState(false);
   const { addItem } = useCart();
@@ -57,26 +57,31 @@ export function CollectionProductCard({ product, index = 0 }: CollectionProductC
         transition={{ duration: 0.45, delay: index * 0.05, ease: "easeOut" }}
         className="group flex h-full flex-col"
       >
-        <div className="relative overflow-hidden rounded-md bg-[#f0ebe3]">
-          <Link href={href} className="relative block aspect-[3/4] overflow-hidden">
+        <div className="relative w-full overflow-hidden rounded-md bg-[#f0ebe3]">
+          <Link href={href} className="relative block w-full">
             {image ? (
               <Image
                 src={image.url}
                 alt={image.alt}
-                fill
-                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+                width={800}
+                height={1000}
+                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                unoptimized
+                className="!h-auto !w-full !max-w-full object-contain transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+                style={{ width: "100%", height: "auto" }}
               />
-            ) : null}
+            ) : (
+              <div className="aspect-[4/5] w-full bg-[#e8e2d8]" />
+            )}
           </Link>
 
           {product.pricing.compareAtPrice ? (
-            <span className="absolute top-3 left-3 rounded-md bg-[#1f6f5b] px-2 py-1 text-[11px] font-bold tracking-wide text-white uppercase">
+            <span className="absolute top-2 left-2 z-10 rounded-md bg-[#1f6f5b] px-2 py-1 text-[11px] font-bold tracking-wide text-white uppercase sm:top-3 sm:left-3">
               Sale
             </span>
           ) : null}
 
-          <div className="absolute top-2 right-2 z-10 flex translate-y-0 flex-col gap-1.5 opacity-100 transition-all duration-300 ease-out sm:top-3 sm:right-3 sm:gap-2 md:pointer-events-none md:translate-y-2 md:opacity-0 md:group-hover:pointer-events-auto md:group-hover:translate-y-0 md:group-hover:opacity-100">
+          <div className="absolute top-1.5 right-1.5 z-10 flex translate-y-0 flex-col gap-1 opacity-100 transition-all duration-300 ease-out sm:top-2 sm:right-2 sm:gap-1.5 md:pointer-events-none md:translate-y-2 md:opacity-0 md:group-hover:pointer-events-auto md:group-hover:translate-y-0 md:group-hover:opacity-100">
             <button
               type="button"
               aria-label={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
@@ -108,8 +113,6 @@ export function CollectionProductCard({ product, index = 0 }: CollectionProductC
               <ShoppingBagOutlinedIcon sx={actionIconSx} />
             </button>
           </div>
-
-          <div className="pointer-events-none absolute inset-0 bg-black/0 transition-colors duration-300 md:group-hover:bg-black/10" />
         </div>
 
         <div className="flex flex-1 flex-col gap-1 pt-3">

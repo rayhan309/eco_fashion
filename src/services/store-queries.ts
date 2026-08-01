@@ -6,6 +6,7 @@ import type { AdminOrder } from "@/types/admin-order";
 import type { AdminCategory } from "@/types/admin-category";
 import type { ProductAttribute } from "@/data/dummy/product-attributes";
 import type { Collection } from "@/types/collection";
+import type { Category } from "@/types/category";
 import type { PublicSiteSettings } from "@/types/site-settings";
 import { api } from "@/lib/axios";
 import { normalizePublicSiteSettings } from "@/lib/site-settings/public";
@@ -13,6 +14,11 @@ import { normalizePublicSiteSettings } from "@/lib/site-settings/public";
 export async function fetchSiteSettings(): Promise<PublicSiteSettings> {
   const { data } = await api.get<PublicSiteSettings>("/api/store/settings");
   return normalizePublicSiteSettings(data);
+}
+
+export async function fetchStoreCategories(): Promise<Category[]> {
+  const { data } = await api.get<Category[]>("/api/store/categories");
+  return Array.isArray(data) ? data : [];
 }
 
 export async function fetchHomePageData(): Promise<HomePageData> {

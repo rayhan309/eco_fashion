@@ -2,6 +2,7 @@ export const queryKeys = {
   site: {
     all: ["site"] as const,
     settings: () => [...queryKeys.site.all, "settings"] as const,
+    categories: () => [...queryKeys.site.all, "categories"] as const,
   },
   home: {
     all: ["home"] as const,

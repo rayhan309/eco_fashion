@@ -7,9 +7,13 @@ type CollectionsSectionProps = {
 };
 
 export function CollectionsSection({ groups }: CollectionsSectionProps) {
+  const visibleGroups = groups.filter((group) => (group.products?.length ?? 0) > 0);
+
+  if (visibleGroups.length === 0) return null;
+
   return (
     <div className="flex flex-col gap-10 md:gap-12">
-      {groups.map((group) => (
+      {visibleGroups.map((group) => (
         <section key={group.category.id} className="w-full">
           <div className="relative mb-6 flex items-center justify-between gap-4 border-b border-[#20312d]">
             <div className="-mb-px bg-[#20312d] py-2.5 pr-7 pl-4 text-sm font-bold tracking-wide text-white [clip-path:polygon(0_0,calc(100%-14px)_0,100%_100%,0_100%)] sm:pl-5 sm:text-base">
@@ -24,7 +28,7 @@ export function CollectionsSection({ groups }: CollectionsSectionProps) {
             </Link>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 lg:gap-5">
+          <div className="grid grid-cols-2 items-start gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5 lg:gap-4">
             {group.products.map((product, index) => (
               <CollectionProductCard
                 key={product.id}

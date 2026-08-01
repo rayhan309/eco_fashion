@@ -31,6 +31,10 @@ export function normalizePublicSiteSettings(
       : base.socialLinks,
     shippingAreas,
     shippingClasses,
+    heroSlides: Array.isArray(settings.heroSlides) ? settings.heroSlides : [],
+    heroSideBanners: Array.isArray(settings.heroSideBanners)
+      ? settings.heroSideBanners
+      : [],
     freeDeliveryEnabled:
       settings.freeDeliveryEnabled === undefined
         ? base.freeDeliveryEnabled
@@ -55,6 +59,8 @@ function toPublicDefaults(): PublicSiteSettings {
       fees: [...cls.fees],
     })),
     socialLinks: DEFAULT_SITE_SETTINGS.socialLinks.map((link) => ({ ...link })),
+    heroSlides: [],
+    heroSideBanners: [],
   };
 }
 

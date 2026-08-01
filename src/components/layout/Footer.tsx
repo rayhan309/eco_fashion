@@ -12,7 +12,8 @@ import XIcon from "@mui/icons-material/X";
 import Link from "next/link";
 import { Container } from "@/components/container";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
-import { FOOTER_HELP, FOOTER_SHOP } from "@/lib/constants/navigation";
+import { useStoreCategories } from "@/hooks/useStoreCategories";
+import { buildFooterShop, FOOTER_HELP } from "@/lib/constants/navigation";
 
 const SOCIAL_ICONS: Record<string, typeof InstagramIcon> = {
   Instagram: InstagramIcon,
@@ -50,6 +51,8 @@ function formatPhoneHref(phone: string) {
 
 export function Footer() {
   const settings = useSiteSettings();
+  const categories = useStoreCategories();
+  const footerShop = buildFooterShop(categories);
   const year = new Date().getFullYear();
   const copyright = settings.copyrightText.replace("{year}", String(year));
   const visibleSocial = settings.socialLinks.filter((item) => item.visible && item.url);
@@ -128,7 +131,7 @@ export function Footer() {
               Shop
             </h3>
             <ul className="mt-4 space-y-2.5">
-              {FOOTER_SHOP.map((item) => (
+              {footerShop.map((item) => (
                 <li key={item.href}>
                   <Link href={item.href} className={linkClassName}>
                     {item.label}

@@ -16,8 +16,9 @@ import {
 } from "@mui/material";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useForm } from "react-hook-form";
-import { slugify } from "@/lib/utils/slugify";
 import { ADMIN_ACCENT } from "@/lib/constants/admin";
+import { uploadImageToImageKit } from "@/lib/imagekit/upload-client";
+import { slugifyCategoryName } from "@/lib/validations/admin-category";
 import type { AdminCategory } from "@/types/admin-category";
 
 type CategoryFormValues = {
@@ -29,25 +30,30 @@ type AddCategoryDialogProps = {
   open: boolean;
   mode: "add" | "edit";
   initial?: AdminCategory | null;
+  saving?: boolean;
   onClose: () => void;
   onSave: (payload: {
     name: string;
     slug: string;
     image: string;
     description: string;
-  }) => void;
+  }) => Promise<void> | void;
 };
 
 export function AddCategoryDialog({
   open,
   mode,
   initial,
+  saving = false,
   onClose,
   onSave,
 }: AddCategoryDialogProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [slugTouched, setSlugTouched] = useState(false);
 
   const {
@@ -56,18 +62,22 @@ export function AddCategoryDialog({
     reset,
     setValue,
     watch,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<CategoryFormValues>({
     defaultValues: { name: "", slug: "" },
     mode: "onBlur",
   });
 
   const nameValue = watch("name");
+  const busy = saving || uploading;
 
   useEffect(() => {
     if (!open) return;
     setSlugTouched(false);
     setImageError(null);
+    setUploadError(null);
+    setPendingFile(null);
+    setUploading(false);
     if (mode === "edit" && initial) {
       reset({ name: initial.name, slug: initial.slug });
       setImagePreview(initial.image);
@@ -80,7 +90,7 @@ export function AddCategoryDialog({
   useEffect(() => {
     if (!open || slugTouched || mode === "edit") return;
     if (nameValue) {
-      setValue("slug", slugify(nameValue), { shouldValidate: true });
+      setValue("slug", slugifyCategoryName(nameValue), { shouldValidate: true });
     }
   }, [nameValue, open, slugTouched, mode, setValue]);
 
@@ -96,27 +106,48 @@ export function AddCategoryDialog({
       return;
     }
     setImageError(null);
+    setUploadError(null);
+    setPendingFile(file);
     setImagePreview(URL.createObjectURL(file));
   }
 
-  function onSubmit(values: CategoryFormValues) {
-    if (!imagePreview) {
+  async function onSubmit(values: CategoryFormValues) {
+    const existingImage = mode === "edit" ? initial?.image : null;
+    if (!pendingFile && !imagePreview && !existingImage) {
       setImageError("Category image is required.");
       return;
     }
-    onSave({
-      name: values.name.trim(),
-      slug: slugify(values.slug || values.name),
-      image: imagePreview,
-      description: initial?.description ?? "",
-    });
-    onClose();
+
+    setUploadError(null);
+    try {
+      let imageUrl = existingImage || imagePreview || "";
+      if (pendingFile) {
+        setUploading(true);
+        imageUrl = await uploadImageToImageKit(pendingFile, "/hidden-urban/categories");
+      }
+
+      if (!imageUrl || imageUrl.startsWith("blob:")) {
+        setImageError("Category image is required.");
+        return;
+      }
+
+      await onSave({
+        name: values.name.trim(),
+        slug: slugifyCategoryName(values.slug || values.name),
+        image: imageUrl,
+        description: initial?.description ?? "",
+      });
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "Could not save category");
+    } finally {
+      setUploading(false);
+    }
   }
 
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={() => !busy && onClose()}
       fullWidth
       maxWidth="sm"
       slotProps={{
@@ -143,7 +174,7 @@ export function AddCategoryDialog({
               {mode === "add" ? "Add category" : "Edit category"}
             </Typography>
           </Box>
-          <IconButton aria-label="Close" onClick={onClose} size="small">
+          <IconButton aria-label="Close" onClick={onClose} size="small" disabled={busy}>
             <CloseRoundedIcon />
           </IconButton>
         </Box>
@@ -156,6 +187,7 @@ export function AddCategoryDialog({
             fullWidth
             required
             margin="normal"
+            disabled={busy}
             error={Boolean(errors.name)}
             helperText={errors.name?.message}
             {...register("name", {
@@ -168,6 +200,7 @@ export function AddCategoryDialog({
             label="Slug"
             fullWidth
             margin="normal"
+            disabled={busy}
             error={Boolean(errors.slug)}
             helperText={errors.slug?.message ?? "Used in URLs, e.g. /shop/your-slug"}
             {...register("slug", {
@@ -186,8 +219,9 @@ export function AddCategoryDialog({
           <Box
             role="button"
             tabIndex={0}
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => !busy && fileInputRef.current?.click()}
             onKeyDown={(e) => {
+              if (busy) return;
               if (e.key === "Enter" || e.key === " ") fileInputRef.current?.click();
             }}
             sx={{
@@ -196,9 +230,10 @@ export function AddCategoryDialog({
               borderRadius: 2,
               p: 3,
               textAlign: "center",
-              cursor: "pointer",
+              cursor: busy ? "default" : "pointer",
               bgcolor: "rgba(31,111,91,0.04)",
-              "&:hover": { bgcolor: "rgba(31,111,91,0.08)" },
+              opacity: busy ? 0.7 : 1,
+              "&:hover": busy ? undefined : { bgcolor: "rgba(31,111,91,0.08)" },
             }}
           >
             <input
@@ -234,25 +269,35 @@ export function AddCategoryDialog({
               {imageError}
             </Typography>
           ) : null}
+          {uploadError ? (
+            <Typography sx={{ mt: 0.75, fontSize: "0.75rem", color: "#dc2626" }}>
+              {uploadError}
+            </Typography>
+          ) : null}
         </DialogContent>
 
         <DialogActions sx={{ px: 3, pb: 2.5, pt: 0 }}>
-          <Button onClick={onClose} sx={{ fontWeight: 600, color: "text.primary" }}>
+          <Button
+            onClick={onClose}
+            disabled={busy}
+            sx={{ fontWeight: 600, color: "text.primary", textTransform: "none" }}
+          >
             Cancel
           </Button>
           <Button
             type="submit"
             variant="contained"
-            disabled={isSubmitting}
+            disabled={busy}
             startIcon={<CloudUploadOutlinedIcon />}
             sx={{
               bgcolor: ADMIN_ACCENT,
               fontWeight: 600,
               px: 2.5,
+              textTransform: "none",
               "&:hover": { bgcolor: "#185a4a" },
             }}
           >
-            Save category
+            {uploading ? "Uploading…" : saving ? "Saving…" : "Save category"}
           </Button>
         </DialogActions>
       </Box>

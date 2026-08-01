@@ -4,7 +4,6 @@ import { NotFoundView } from "@/components/errors";
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
 import { WishlistSidebar } from "@/components/wishlist/WishlistSidebar";
-import { getProducts } from "@/services/products";
 
 export const metadata: Metadata = {
   title: "Page not found",
@@ -16,9 +15,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function NotFound() {
-  const products = await getProducts();
-
+export default function NotFound() {
   return (
     <div className="flex min-h-dvh flex-col">
       <Header />
@@ -27,7 +24,7 @@ export default async function NotFound() {
       </main>
       <Footer />
       <CartSidebar />
-      <WishlistSidebar products={products} />
+      <WishlistSidebar products={[]} />
     </div>
   );
 }

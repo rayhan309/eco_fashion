@@ -11,6 +11,13 @@ body {
   background: #f6f3ed;
 }
 
+/* Tailwind preflight sets img { max-width:100%; height:auto } which breaks next/image fill */
+img[data-nimg="fill"] {
+  max-width: none;
+  width: 100%;
+  height: 100%;
+}
+
 button,
 [type="button"],
 [type="submit"],

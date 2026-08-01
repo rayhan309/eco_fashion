@@ -13,7 +13,8 @@ import {
   Typography,
 } from "@mui/material";
 import Link from "next/link";
-import { MOBILE_NAV } from "@/lib/constants/navigation";
+import { useStoreCategories } from "@/hooks/useStoreCategories";
+import { buildMobileNav } from "@/lib/constants/navigation";
 
 type MobileNavProps = {
   open: boolean;
@@ -21,6 +22,9 @@ type MobileNavProps = {
 };
 
 export function MobileNav({ open, onClose }: MobileNavProps) {
+  const categories = useStoreCategories();
+  const mobileNav = buildMobileNav(categories);
+
   return (
     <Drawer
       anchor="left"
@@ -64,7 +68,7 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
         <Divider />
 
         <List sx={{ flex: 1, px: 1, py: 1.5 }}>
-          {MOBILE_NAV.map((item) => (
+          {mobileNav.map((item) => (
             <ListItemButton
               key={item.href}
               component={Link}

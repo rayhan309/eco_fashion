@@ -19,8 +19,9 @@ import { Container } from "@/components/container";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { useCart } from "@/hooks/useCart";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { useStoreCategories } from "@/hooks/useStoreCategories";
 import { useWishlist } from "@/hooks/useWishlist";
-import { MAIN_NAV } from "@/lib/constants/navigation";
+import { buildMainNav } from "@/lib/constants/navigation";
 import { useCartUI } from "@/providers/CartUIProvider";
 
 const iconBtnSx = {
@@ -42,6 +43,8 @@ const badgeSx = {
 export function Header() {
   const pathname = usePathname();
   const settings = useSiteSettings();
+  const categories = useStoreCategories();
+  const mainNav = buildMainNav(categories);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { openCart, openWishlist } = useCartUI();
   const { itemCount } = useCart();
@@ -119,8 +122,8 @@ export function Header() {
                 gap: 0.5,
               }}
             >
-              {MAIN_NAV.map((item) => {
-                const hasDeeperMatch = MAIN_NAV.some(
+              {mainNav.map((item) => {
+                const hasDeeperMatch = mainNav.some(
                   (other) =>
                     other.href !== item.href &&
                     other.href.startsWith(`${item.href}/`) &&

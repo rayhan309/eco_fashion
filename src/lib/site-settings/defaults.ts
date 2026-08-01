@@ -42,6 +42,8 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
       fees: [60, 120],
     },
   ],
+  heroSlides: [],
+  heroSideBanners: [],
   socialLinks: [
     { platform: "Instagram", url: "https://instagram.com", visible: true },
     { platform: "Facebook", url: "https://facebook.com", visible: true },

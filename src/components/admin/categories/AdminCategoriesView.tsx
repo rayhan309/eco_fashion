@@ -5,8 +5,14 @@ import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import DragIndicatorRoundedIcon from "@mui/icons-material/DragIndicatorRounded";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import {
+  Alert,
   Box,
   Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   IconButton,
   Table,
   TableBody,
@@ -18,16 +24,25 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Image from "next/image";
 import { useMemo, useState } from "react";
 import { AddCategoryDialog } from "@/components/admin/categories/AddCategoryDialog";
+import { useToast } from "@/context/toast/ToastProvider";
 import { ADMIN_ACCENT } from "@/lib/constants/admin";
+import { queryKeys } from "@/lib/queries/query-keys";
+import {
+  createAdminCategory,
+  deleteAdminCategory,
+  reorderAdminCategories,
+  updateAdminCategory,
+} from "@/services/admin-category-mutations";
 import type { AdminCategory } from "@/types/admin-category";
 
 const PAGE_SIZE = 10;
 
 type AdminCategoriesViewProps = {
-  initialCategories: AdminCategory[];
+  categories: AdminCategory[];
 };
 
 function reorderList(list: AdminCategory[], from: number, to: number) {
@@ -37,13 +52,15 @@ function reorderList(list: AdminCategory[], from: number, to: number) {
   return next.map((row, index) => ({ ...row, sortOrder: index + 1 }));
 }
 
-export function AdminCategoriesView({ initialCategories }: AdminCategoriesViewProps) {
-  const [categories, setCategories] = useState(initialCategories);
+export function AdminCategoriesView({ categories }: AdminCategoriesViewProps) {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"add" | "edit">("add");
   const [editing, setEditing] = useState<AdminCategory | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<AdminCategory | null>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
 
   const filtered = useMemo(() => {
@@ -63,6 +80,68 @@ export function AdminCategoriesView({ initialCategories }: AdminCategoriesViewPr
   const pageStart = (currentPage - 1) * PAGE_SIZE;
   const pageRows = filtered.slice(pageStart, pageStart + PAGE_SIZE);
 
+  const saveMutation = useMutation({
+    mutationFn: async (payload: {
+      name: string;
+      slug: string;
+      image: string;
+      description: string;
+    }) => {
+      if (dialogMode === "edit" && editing) {
+        return updateAdminCategory(editing.id, payload);
+      }
+      return createAdminCategory(payload);
+    },
+    onSuccess: async () => {
+      showToast(dialogMode === "edit" ? "Category updated" : "Category created");
+      setDialogOpen(false);
+      setEditing(null);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.admin.categories() }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.site.categories() }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.home.page() }),
+      ]);
+    },
+    onError: (error) => {
+      showToast(error instanceof Error ? error.message : "Failed to save category", "error");
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteAdminCategory(id),
+    onSuccess: async () => {
+      setDeleteTarget(null);
+      showToast("Category deleted");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.admin.categories() }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.site.categories() }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.home.page() }),
+      ]);
+    },
+    onError: (error) => {
+      showToast(error instanceof Error ? error.message : "Failed to delete category", "error");
+    },
+  });
+
+  const reorderMutation = useMutation({
+    mutationFn: (orderedIds: string[]) => reorderAdminCategories(orderedIds),
+    onSuccess: async (next) => {
+      queryClient.setQueryData(queryKeys.admin.categories(), next);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.admin.categories() }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.site.categories() }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.home.page() }),
+      ]);
+    },
+    onError: (error) => {
+      showToast(error instanceof Error ? error.message : "Failed to reorder categories", "error");
+      void Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.admin.categories() }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.site.categories() }),
+      ]);
+    },
+  });
+
   function openAdd() {
     setDialogMode("add");
     setEditing(null);
@@ -75,56 +154,18 @@ export function AdminCategoriesView({ initialCategories }: AdminCategoriesViewPr
     setDialogOpen(true);
   }
 
-  function handleSave(payload: {
-    name: string;
-    slug: string;
-    image: string;
-    description: string;
-  }) {
-    if (dialogMode === "edit" && editing) {
-      setCategories((prev) =>
-        prev.map((cat) =>
-          cat.id === editing.id
-            ? { ...cat, name: payload.name, slug: payload.slug, image: payload.image }
-            : cat,
-        ),
-      );
-      return;
-    }
-
-    const id = `cat-${Date.now()}`;
-    setCategories((prev) => [
-      ...prev,
-      {
-        id,
-        name: payload.name,
-        slug: payload.slug,
-        image: payload.image,
-        description: payload.description,
-        sortOrder: prev.length + 1,
-      },
-    ]);
-  }
-
-  function handleDelete(id: string) {
-    setCategories((prev) =>
-      [...prev]
-        .filter((c) => c.id !== id)
-        .sort((a, b) => a.sortOrder - b.sortOrder)
-        .map((c, i) => ({ ...c, sortOrder: i + 1 })),
-    );
-  }
-
   function handleDrop(targetId: string) {
-    if (dragIndex === null) return;
+    if (dragIndex === null || reorderMutation.isPending) return;
     const sorted = [...categories].sort((a, b) => a.sortOrder - b.sortOrder);
     const toIndex = sorted.findIndex((c) => c.id === targetId);
     if (toIndex < 0 || dragIndex === toIndex) {
       setDragIndex(null);
       return;
     }
-    setCategories(reorderList(sorted, dragIndex, toIndex));
+    const next = reorderList(sorted, dragIndex, toIndex);
     setDragIndex(null);
+    queryClient.setQueryData(queryKeys.admin.categories(), next);
+    reorderMutation.mutate(next.map((item) => item.id));
   }
 
   return (
@@ -162,7 +203,7 @@ export function AdminCategoriesView({ initialCategories }: AdminCategoriesViewPr
             Product categories
           </Typography>
           <Typography sx={{ mt: 0.5, fontSize: "0.9rem", color: "text.secondary" }}>
-            Add categories with images. Uploads can connect to your CDN and database later.
+            Add, edit, and reorder categories. Changes save to the database.
           </Typography>
         </Box>
 
@@ -182,6 +223,12 @@ export function AdminCategoriesView({ initialCategories }: AdminCategoriesViewPr
           Add category
         </Button>
       </Box>
+
+      {reorderMutation.isError ? (
+        <Alert severity="error" sx={{ mb: 2, borderRadius: 1 }}>
+          Could not save category order. Refresh and try again.
+        </Alert>
+      ) : null}
 
       <Box
         sx={{
@@ -267,12 +314,12 @@ export function AdminCategoriesView({ initialCategories }: AdminCategoriesViewPr
                     <TableRow
                       key={category.id}
                       hover
-                      draggable
+                      draggable={!reorderMutation.isPending}
                       onDragStart={() => setDragIndex(dragFrom)}
                       onDragEnd={() => setDragIndex(null)}
                       onDragOver={(e) => e.preventDefault()}
                       onDrop={() => handleDrop(category.id)}
-                      sx={{ cursor: "grab" }}
+                      sx={{ cursor: reorderMutation.isPending ? "default" : "grab" }}
                     >
                       <TableCell sx={{ width: 72 }}>
                         <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
@@ -296,13 +343,15 @@ export function AdminCategoriesView({ initialCategories }: AdminCategoriesViewPr
                             border: "1px solid rgba(0,0,0,0.06)",
                           }}
                         >
-                          <Image
-                            src={category.image}
-                            alt={category.name}
-                            fill
-                            sizes="48px"
-                            className="object-cover"
-                          />
+                          {category.image ? (
+                            <Image
+                              src={category.image}
+                              alt={category.name}
+                              fill
+                              sizes="48px"
+                              className="object-cover"
+                            />
+                          ) : null}
                         </Box>
                       </TableCell>
                       <TableCell sx={{ fontWeight: 600, fontSize: "0.9rem" }}>
@@ -336,7 +385,7 @@ export function AdminCategoriesView({ initialCategories }: AdminCategoriesViewPr
                           <IconButton
                             size="small"
                             aria-label={`Delete ${category.name}`}
-                            onClick={() => handleDelete(category.id)}
+                            onClick={() => setDeleteTarget(category)}
                           >
                             <DeleteOutlineRoundedIcon
                               sx={{ fontSize: 18, color: "#dc2626" }}
@@ -399,9 +448,48 @@ export function AdminCategoriesView({ initialCategories }: AdminCategoriesViewPr
         open={dialogOpen}
         mode={dialogMode}
         initial={editing}
-        onClose={() => setDialogOpen(false)}
-        onSave={handleSave}
+        saving={saveMutation.isPending}
+        onClose={() => {
+          if (saveMutation.isPending) return;
+          setDialogOpen(false);
+          setEditing(null);
+        }}
+        onSave={async (payload) => {
+          await saveMutation.mutateAsync(payload);
+        }}
       />
+
+      <Dialog
+        open={Boolean(deleteTarget)}
+        onClose={() => !deleteMutation.isPending && setDeleteTarget(null)}
+      >
+        <DialogTitle>Delete category?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {deleteTarget
+              ? `“${deleteTarget.name}” will be removed from the catalog. This cannot be undone.`
+              : ""}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setDeleteTarget(null)}
+            disabled={deleteMutation.isPending}
+            sx={{ textTransform: "none" }}
+          >
+            Cancel
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            disabled={deleteMutation.isPending || !deleteTarget}
+            onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+            sx={{ textTransform: "none" }}
+          >
+            {deleteMutation.isPending ? "Deleting…" : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

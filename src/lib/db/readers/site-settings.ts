@@ -9,6 +9,7 @@ import type {
   SiteShippingClass,
   SiteSocialLink,
 } from "@/types/site-settings";
+import type { HeroSideBanner, HeroSlide } from "@/types/hero";
 
 export { toPublicSiteSettings };
 
@@ -32,6 +33,48 @@ function mapSocialLinks(raw: unknown): SiteSocialLink[] {
       visible: row.visible !== false,
     };
   });
+}
+
+function mapHeroSlides(raw: unknown): HeroSlide[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((item, index) => {
+      const row = record(item);
+      const image = String(row.image ?? "");
+      const title = String(row.title ?? "").trim();
+      if (!image || !title) return null;
+      return {
+        id: String(row.id ?? `slide-${index}`),
+        title,
+        subtitle: String(row.subtitle ?? ""),
+        ctaLabel: String(row.ctaLabel ?? "Shop now"),
+        href: String(row.href ?? "/shop"),
+        image,
+        imageAlt: String(row.imageAlt ?? title),
+      };
+    })
+    .filter((slide): slide is HeroSlide => slide !== null);
+}
+
+function mapHeroSideBanners(raw: unknown): HeroSideBanner[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((item, index) => {
+      const row = record(item);
+      const image = String(row.image ?? "");
+      const title = String(row.title ?? "").trim();
+      if (!image || !title) return null;
+      return {
+        id: String(row.id ?? `side-${index}`),
+        title,
+        subtitle: String(row.subtitle ?? ""),
+        href: String(row.href ?? "/shop"),
+        image,
+        imageAlt: String(row.imageAlt ?? title),
+        tone: row.tone === "sand" ? "sand" : "forest",
+      };
+    })
+    .filter((banner): banner is HeroSideBanner => banner !== null);
 }
 
 function mapShippingAreas(raw: unknown): SiteShippingArea[] {
@@ -134,6 +177,8 @@ export function mapSiteSettingsDoc(doc: Record<string, unknown>): SiteSettings {
     ),
     shippingAreas,
     shippingClasses,
+    heroSlides: mapHeroSlides(doc.heroSlides),
+    heroSideBanners: mapHeroSideBanners(doc.heroSideBanners),
     socialLinks: mapSocialLinks(doc.socialLinks),
     metaPixelEnabled: Boolean(doc.metaPixelEnabled ?? false),
     metaPixelId: String(doc.metaPixelId ?? ""),
@@ -169,5 +214,7 @@ export async function getSiteSettingsFromDbOrFallback(): Promise<SiteSettings> {
       fees: [...cls.fees],
     })),
     socialLinks: DEFAULT_SITE_SETTINGS.socialLinks.map((link) => ({ ...link })),
+    heroSlides: [],
+    heroSideBanners: [],
   };
 }
