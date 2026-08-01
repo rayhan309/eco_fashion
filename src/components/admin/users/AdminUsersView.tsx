@@ -5,6 +5,11 @@ import {
   Alert,
   Box,
   Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   FormControl,
   IconButton,
   InputLabel,
@@ -22,6 +27,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { SettingsPageHeader, SettingsSection } from "@/components/admin/settings/SettingsSection";
 import { ADMIN_ACCENT } from "@/lib/constants/admin";
@@ -35,8 +41,16 @@ type CreateForm = {
   role: "shop_manager" | "moderator";
 };
 
+type DeletableUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+};
+
 export function AdminUsersView() {
   const queryClient = useQueryClient();
+  const [deleteTarget, setDeleteTarget] = useState<DeletableUser | null>(null);
 
   const usersQuery = useQuery({
     queryKey: ["admin", "users"],
@@ -69,6 +83,7 @@ export function AdminUsersView() {
   const deleteMutation = useMutation({
     mutationFn: deleteAdminUser,
     onSuccess: async () => {
+      setDeleteTarget(null);
       await queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
     },
   });
@@ -91,6 +106,14 @@ export function AdminUsersView() {
       {createMutation.isSuccess ? (
         <Alert severity="success" sx={{ mb: 2, borderRadius: 1 }}>
           User created successfully.
+        </Alert>
+      ) : null}
+
+      {deleteMutation.isError ? (
+        <Alert severity="error" sx={{ mb: 2, borderRadius: 1 }}>
+          {deleteMutation.error instanceof Error
+            ? deleteMutation.error.message
+            : "Failed to delete user"}
         </Alert>
       ) : null}
 
@@ -212,11 +235,7 @@ export function AdminUsersView() {
                               size="small"
                               color="error"
                               disabled={deleteMutation.isPending}
-                              onClick={() => {
-                                if (window.confirm(`Delete ${user.email}?`)) {
-                                  deleteMutation.mutate(user.id);
-                                }
-                              }}
+                              onClick={() => setDeleteTarget(user)}
                             >
                               <DeleteOutlineRoundedIcon fontSize="small" />
                             </IconButton>
@@ -238,6 +257,38 @@ export function AdminUsersView() {
           </TableContainer>
         </SettingsSection>
       </Stack>
+
+      <Dialog
+        open={Boolean(deleteTarget)}
+        onClose={() => !deleteMutation.isPending && setDeleteTarget(null)}
+      >
+        <DialogTitle>Delete user?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {deleteTarget
+              ? `${deleteTarget.name} (${deleteTarget.email}) will lose dashboard access. This cannot be undone.`
+              : ""}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setDeleteTarget(null)}
+            disabled={deleteMutation.isPending}
+            sx={{ textTransform: "none" }}
+          >
+            Cancel
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            disabled={deleteMutation.isPending || !deleteTarget}
+            onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+            sx={{ textTransform: "none" }}
+          >
+            {deleteMutation.isPending ? "Deleting…" : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

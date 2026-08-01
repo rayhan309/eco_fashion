@@ -5,12 +5,44 @@ import LocalShippingOutlinedIcon from "@mui/icons-material/LocalShippingOutlined
 import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
 import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
 import { Alert, Box, Button, Stack, Typography } from "@mui/material";
+import confetti from "canvas-confetti";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { printOrderInvoice } from "@/lib/orders/print-invoice";
 import { lookupStoreOrder } from "@/services/store-orders";
+
+function fireOrderSuccessConfetti(primaryColor: string) {
+  const colors = [primaryColor, "#f6f3ed", "#20312d", "#fbbf24", "#34d399"];
+
+  confetti({
+    particleCount: 80,
+    spread: 70,
+    origin: { y: 0.65 },
+    colors,
+    disableForReducedMotion: true,
+  });
+
+  window.setTimeout(() => {
+    confetti({
+      particleCount: 45,
+      angle: 60,
+      spread: 55,
+      origin: { x: 0, y: 0.7 },
+      colors,
+      disableForReducedMotion: true,
+    });
+    confetti({
+      particleCount: 45,
+      angle: 120,
+      spread: 55,
+      origin: { x: 1, y: 0.7 },
+      colors,
+      disableForReducedMotion: true,
+    });
+  }, 220);
+}
 
 export function CheckoutSuccessView() {
   const params = useSearchParams();
@@ -19,6 +51,13 @@ export function CheckoutSuccessView() {
   const phone = params.get("phone");
   const [printing, setPrinting] = useState(false);
   const [printError, setPrintError] = useState<string | null>(null);
+  const confettiFired = useRef(false);
+
+  useEffect(() => {
+    if (confettiFired.current) return;
+    confettiFired.current = true;
+    fireOrderSuccessConfetti(settings.primaryColor || "#1f6f5b");
+  }, [settings.primaryColor]);
 
   const trackHref = orderNumber
     ? `/track-order?${new URLSearchParams({
