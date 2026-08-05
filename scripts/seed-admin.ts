@@ -50,6 +50,9 @@ async function main() {
   }
 
   const created = await ensureSuperAdmin();
+  if (!created) {
+    throw new Error("Could not create Super Admin (check SUPER_ADMIN_* env vars).");
+  }
   console.log("Created Super Admin:");
   console.log(`  email: ${created.email}`);
   console.log(`  name:  ${created.name}`);

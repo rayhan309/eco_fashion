@@ -17,6 +17,16 @@ declare global {
   }
 }
 
+/** Meta standard event names (Events Manager funnel). */
+const META_BROWSER_EVENT: Record<PixelEventName, string> = {
+  PageView: "PageView",
+  ViewContent: "ViewContent",
+  AddToCart: "AddToCart",
+  InitiateCheckout: "InitiateCheckout",
+  Purchase: "Purchase",
+};
+
+/** TikTok standard event names. */
 const TIKTOK_BROWSER_EVENT: Record<PixelEventName, string> = {
   PageView: "Pageview",
   ViewContent: "ViewContent",
@@ -61,9 +71,7 @@ type BrowserTrackInput = {
   orderId?: string;
 };
 
-export function trackBrowserPixel(input: BrowserTrackInput) {
-  if (typeof window === "undefined") return;
-
+function buildParams(input: BrowserTrackInput): Record<string, unknown> {
   const params: Record<string, unknown> = {};
   if (input.currency) params.currency = input.currency;
   if (input.value != null) params.value = input.value;
@@ -79,21 +87,27 @@ export function trackBrowserPixel(input: BrowserTrackInput) {
   if (input.contentName) params.content_name = input.contentName;
   if (input.numItems != null) params.num_items = input.numItems;
   if (input.orderId) params.order_id = input.orderId;
+  return params;
+}
+
+function fireOnce(input: BrowserTrackInput): { meta: boolean; tiktok: boolean } {
+  const params = buildParams(input);
+  let meta = false;
+  let tiktok = false;
 
   try {
     if (typeof window.fbq === "function") {
-      if (input.eventName === "PageView") {
-        window.fbq("track", "PageView", params, { eventID: input.eventId });
-      } else {
-        window.fbq("track", input.eventName, params, { eventID: input.eventId });
-      }
+      window.fbq("track", META_BROWSER_EVENT[input.eventName], params, {
+        eventID: input.eventId,
+      });
+      meta = true;
     }
   } catch {
-    /* ignore pixel errors */
+    /* ignore */
   }
 
   try {
-    if (window.ttq?.track) {
+    if (typeof window.ttq?.track === "function") {
       const ttParams: Record<string, unknown> = { ...params };
       if (input.contents?.length) {
         ttParams.contents = input.contents.map((item) => ({
@@ -105,8 +119,28 @@ export function trackBrowserPixel(input: BrowserTrackInput) {
       window.ttq.track(TIKTOK_BROWSER_EVENT[input.eventName], ttParams, {
         event_id: input.eventId,
       });
+      tiktok = true;
     }
   } catch {
-    /* ignore pixel errors */
+    /* ignore */
   }
+
+  return { meta, tiktok };
+}
+
+/** Fire Meta + TikTok browser events; retry briefly until stubs are ready. */
+export function trackBrowserPixel(input: BrowserTrackInput) {
+  if (typeof window === "undefined") return;
+
+  const result = fireOnce(input);
+  if (result.meta || result.tiktok) return;
+
+  let tries = 0;
+  const timer = window.setInterval(() => {
+    tries += 1;
+    const again = fireOnce(input);
+    if (again.meta || again.tiktok || tries >= 25) {
+      window.clearInterval(timer);
+    }
+  }, 200);
 }

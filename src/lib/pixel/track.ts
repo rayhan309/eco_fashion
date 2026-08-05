@@ -29,6 +29,8 @@ type TrackInput = {
   eventId?: string;
   /** Skip posting to our CAPI proxy (e.g. Purchase already sent server-side). */
   skipServer?: boolean;
+  /** Skip browser fbq/ttq (e.g. base pixel already called page()). */
+  skipBrowser?: boolean;
 };
 
 /**
@@ -39,18 +41,20 @@ export async function trackPixelEvent(input: TrackInput): Promise<string> {
   const eventSourceUrl = typeof window !== "undefined" ? window.location.href : undefined;
   const browser = getBrowserIds();
 
-  trackBrowserPixel({
-    eventName: input.eventName,
-    eventId,
-    value: input.value,
-    currency: input.currency,
-    contentIds: input.contentIds,
-    contents: input.contents,
-    contentType: input.contentType ?? "product",
-    contentName: input.contentName,
-    numItems: input.numItems,
-    orderId: input.orderId,
-  });
+  if (!input.skipBrowser) {
+    trackBrowserPixel({
+      eventName: input.eventName,
+      eventId,
+      value: input.value,
+      currency: input.currency,
+      contentIds: input.contentIds,
+      contents: input.contents,
+      contentType: input.contentType ?? "product",
+      contentName: input.contentName,
+      numItems: input.numItems,
+      orderId: input.orderId,
+    });
+  }
 
   if (!input.skipServer) {
     try {

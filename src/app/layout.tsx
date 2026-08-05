@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { SiteSettingsShell } from "@/components/site/SiteSettingsShell";
+import { TrackingPixels } from "@/components/site/TrackingPixels";
 import { AppProviders } from "@/providers/AppProviders";
 import "./globals.css";
 
@@ -32,6 +33,9 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        <TrackingPixels />
+      </head>
       <body className="min-h-full flex flex-col">
         <AppProviders>
           <SiteSettingsShell>{children}</SiteSettingsShell>
