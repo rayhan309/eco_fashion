@@ -50,12 +50,19 @@ function buildProperties(payload: PixelEventPayload) {
   return properties;
 }
 
+function shouldSendTikTokCapi(settings: SiteSettings): boolean {
+  const pixelId = settings.tiktokPixelId.trim();
+  const token = settings.tiktokCapiToken.trim();
+  if (!pixelId || !token) return false;
+  // Send when CAPI is on, or when a test event code is set (Events Manager testing).
+  return settings.tiktokCapiEnabled || Boolean(settings.tiktokCapiTestEventCode.trim());
+}
+
 export async function sendTikTokCapiEvent(
   settings: SiteSettings,
   payload: PixelEventPayload,
 ): Promise<void> {
-  if (!settings.tiktokCapiEnabled) return;
-  if (!settings.tiktokPixelId.trim() || !settings.tiktokCapiToken.trim()) return;
+  if (!shouldSendTikTokCapi(settings)) return;
 
   const eventPayload: Record<string, unknown> = {
     event: TIKTOK_EVENT_MAP[payload.eventName],

@@ -52,12 +52,18 @@ function buildCustomData(payload: PixelEventPayload) {
   return custom;
 }
 
+function shouldSendMetaCapi(settings: SiteSettings): boolean {
+  const pixelId = settings.metaPixelId.trim();
+  const token = settings.metaCapiToken.trim();
+  if (!pixelId || !token) return false;
+  return settings.metaCapiEnabled || Boolean(settings.metaCapiTestEventCode.trim());
+}
+
 export async function sendMetaCapiEvent(
   settings: SiteSettings,
   payload: PixelEventPayload,
 ): Promise<void> {
-  if (!settings.metaCapiEnabled) return;
-  if (!settings.metaPixelId.trim() || !settings.metaCapiToken.trim()) return;
+  if (!shouldSendMetaCapi(settings)) return;
 
   const body: Record<string, unknown> = {
     data: [

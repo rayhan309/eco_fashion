@@ -17,11 +17,17 @@ export function SiteSettingsRoot({ children }: SiteSettingsRootProps) {
 
   const metaOn = settings.metaPixelEnabled && Boolean(settings.metaPixelId.trim());
   const tiktokOn = settings.tiktokPixelEnabled && Boolean(settings.tiktokPixelId.trim());
+  const metaCapiOn =
+    settings.metaCapiEnabled ||
+    Boolean((settings.metaCapiTestEventCode ?? "").trim());
+  const tiktokCapiOn =
+    settings.tiktokCapiEnabled ||
+    Boolean((settings.tiktokCapiTestEventCode ?? "").trim());
 
   // Base PageView is fired by server-rendered TrackingPixels (ttq.page / fbq PageView).
   // This effect covers SPA navigations + CAPI with shared event_id.
   useEffect(() => {
-    if (!metaOn && !tiktokOn && !settings.metaCapiEnabled && !settings.tiktokCapiEnabled) {
+    if (!metaOn && !tiktokOn && !metaCapiOn && !tiktokCapiOn) {
       return;
     }
 
@@ -50,13 +56,7 @@ export function SiteSettingsRoot({ children }: SiteSettingsRootProps) {
     }, 200);
 
     return () => window.clearTimeout(timer);
-  }, [
-    pathname,
-    metaOn,
-    tiktokOn,
-    settings.metaCapiEnabled,
-    settings.tiktokCapiEnabled,
-  ]);
+  }, [pathname, metaOn, tiktokOn, metaCapiOn, tiktokCapiOn]);
 
   return (
     <>

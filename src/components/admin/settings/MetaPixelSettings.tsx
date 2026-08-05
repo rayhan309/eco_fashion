@@ -45,29 +45,33 @@ const defaultPlatform = (overrides?: Partial<PlatformValues>): PlatformValues =>
   ...overrides,
 });
 
+function hasCapiToken(platform: PlatformValues) {
+  return platform.capiToken.trim().length > 0 || platform.capiTokenSaved;
+}
+
 function platformActive(platform: PlatformValues) {
   const hasPixel = platform.pixelId.trim().length > 0;
   const browserOk = platform.browserPixelEnabled && hasPixel;
-  const capiOk =
-    platform.capiEnabled &&
-    hasPixel &&
-    (platform.capiToken.trim().length > 0 || platform.capiTokenSaved);
-  return browserOk || capiOk;
+  const capiOk = platform.capiEnabled && hasPixel && hasCapiToken(platform);
+  const testOk =
+    Boolean(platform.testEventCode.trim()) && hasPixel && hasCapiToken(platform);
+  return browserOk || capiOk || testOk;
 }
 
 function statusLabel(platform: PlatformValues) {
   const hasPixel = platform.pixelId.trim().length > 0;
   const browserOk = platform.browserPixelEnabled && hasPixel;
-  const capiOk =
-    platform.capiEnabled &&
-    hasPixel &&
-    (platform.capiToken.trim().length > 0 || platform.capiTokenSaved);
+  const capiOk = platform.capiEnabled && hasPixel && hasCapiToken(platform);
+  const testCode = platform.testEventCode.trim();
 
   if (browserOk && capiOk) {
     return "browser pixel and CAPI are enabled (deduplication via event_id)";
   }
   if (browserOk) return "browser pixel is enabled";
   if (capiOk) return "CAPI is enabled";
+  if (testCode && hasPixel && hasCapiToken(platform)) {
+    return `Events API test mode (${testCode})`;
+  }
   return null;
 }
 
@@ -80,30 +84,40 @@ function PlatformStatusBanner({
 }) {
   const active = platformActive(platform);
   const detail = statusLabel(platform);
+  const testCode = platform.testEventCode.trim();
+  const needsTokenForTest = Boolean(testCode) && !hasCapiToken(platform);
 
   return (
-    <Box
-      sx={{
-        mt: 2,
-        px: 2,
-        py: 1.25,
-        borderRadius: 1,
-        bgcolor: active ? "rgba(31,111,91,0.1)" : "#f1f5f9",
-        border: "1px solid",
-        borderColor: active ? "rgba(31,111,91,0.25)" : "#e2e8f0",
-      }}
-    >
-      <Typography
+    <Box sx={{ mt: 2 }}>
+      <Box
         sx={{
-          fontSize: "0.85rem",
-          fontWeight: 600,
-          color: active ? ADMIN_ACCENT : "text.secondary",
+          px: 2,
+          py: 1.25,
+          borderRadius: 1,
+          bgcolor: active ? "rgba(31,111,91,0.1)" : "#f1f5f9",
+          border: "1px solid",
+          borderColor: active ? "rgba(31,111,91,0.25)" : "#e2e8f0",
         }}
       >
-        {active
-          ? `Active — ${platformName} ${detail}.`
-          : `${platformName} tracking is disabled.`}
-      </Typography>
+        <Typography
+          sx={{
+            fontSize: "0.85rem",
+            fontWeight: 600,
+            color: active ? ADMIN_ACCENT : "text.secondary",
+          }}
+        >
+          {active
+            ? `Active — ${platformName} ${detail}.`
+            : `${platformName} tracking is disabled.`}
+        </Typography>
+      </Box>
+      {needsTokenForTest ? (
+        <Alert severity="warning" sx={{ mt: 1.5, borderRadius: 1 }}>
+          Test event code <strong>{testCode}</strong> is set, but CAPI access token is
+          missing. Paste the Events API token and Save — otherwise nothing shows in
+          TikTok/Meta Test Events (server).
+        </Alert>
+      ) : null}
     </Box>
   );
 }
@@ -351,9 +365,11 @@ export function MetaPixelSettings() {
                   {...register("meta.capiToken", {
                     validate: (value) => {
                       const m = watch("meta");
-                      if (!m.capiEnabled) return true;
+                      const needsToken =
+                        m.capiEnabled || Boolean(m.testEventCode.trim());
+                      if (!needsToken) return true;
                       if (value.trim() || m.capiTokenSaved) return true;
-                      return "Access token is required when CAPI is enabled";
+                      return "Access token is required for CAPI / test events";
                     },
                   })}
                   error={Boolean(errors.meta?.capiToken)}
@@ -364,7 +380,7 @@ export function MetaPixelSettings() {
                   label="Test event code (optional)"
                   fullWidth
                   placeholder="TEST12345"
-                  helperText="Events Manager → Test events"
+                  helperText="Server Events API only — needs access token"
                   {...register("meta.testEventCode")}
                 />
               </Grid>
@@ -452,9 +468,11 @@ export function MetaPixelSettings() {
                   {...register("tiktok.capiToken", {
                     validate: (value) => {
                       const t = watch("tiktok");
-                      if (!t.capiEnabled) return true;
+                      const needsToken =
+                        t.capiEnabled || Boolean(t.testEventCode.trim());
+                      if (!needsToken) return true;
                       if (value.trim() || t.capiTokenSaved) return true;
-                      return "Access token is required when CAPI is enabled";
+                      return "Access token is required for CAPI / test events";
                     },
                   })}
                   error={Boolean(errors.tiktok?.capiToken)}
@@ -465,7 +483,7 @@ export function MetaPixelSettings() {
                   label="Test event code (optional)"
                   fullWidth
                   placeholder="TEST05989"
-                  helperText="TikTok Events Manager → Test events"
+                  helperText="Server Events API only — needs access token"
                   {...register("tiktok.testEventCode")}
                 />
               </Grid>
