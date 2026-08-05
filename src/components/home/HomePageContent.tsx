@@ -6,7 +6,9 @@ import { HeroSection } from "@/components/home/HeroSection";
 import { TopCategories } from "@/components/home/TopCategories";
 import { Box, CircularProgress } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { heroFromCollections } from "@/lib/hero/from-collections";
 import { queryKeys } from "@/lib/queries/query-keys";
 import { fetchHomePageData } from "@/services/store-queries";
 
@@ -16,6 +18,15 @@ export function HomePageContent() {
     queryKey: queryKeys.home.page(),
     queryFn: fetchHomePageData,
   });
+
+  const hero = useMemo(() => {
+    const configuredSlides = settings.heroSlides ?? [];
+    const configuredSides = settings.heroSideBanners ?? [];
+    if (configuredSlides.length > 0 || configuredSides.length > 0) {
+      return { slides: configuredSlides, sideBanners: configuredSides };
+    }
+    return heroFromCollections(data?.collections ?? []);
+  }, [settings.heroSlides, settings.heroSideBanners, data?.collections]);
 
   if (isPending) {
     return (
@@ -31,10 +42,7 @@ export function HomePageContent() {
 
   return (
     <div className="flex flex-1 flex-col gap-10 md:gap-12">
-      <HeroSection
-        slides={settings.heroSlides ?? []}
-        sideBanners={settings.heroSideBanners ?? []}
-      />
+      <HeroSection slides={hero.slides} sideBanners={hero.sideBanners} />
       <TopCategories categories={data.categories} />
       <CollectionsSection groups={data.categoryGroups} />
       <ClientReviewsSection reviews={data.reviews} />

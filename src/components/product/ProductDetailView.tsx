@@ -15,7 +15,7 @@ import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CollectionProductCard } from "@/components/product/CollectionProductCard";
 import { useCart } from "@/hooks/useCart";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
@@ -82,6 +82,22 @@ export function ProductDetailView({ product, relatedProducts }: ProductDetailVie
   const badge = discountBadge(product);
   const maxQty = Math.max(1, product.inventory.quantity || 99);
   const inStock = product.inventory.inStock && product.inventory.quantity > 0;
+  const viewTracked = useRef(false);
+
+  useEffect(() => {
+    if (viewTracked.current) return;
+    viewTracked.current = true;
+    void import("@/lib/pixel/track").then(({ trackPixelEvent }) => {
+      void trackPixelEvent({
+        eventName: "ViewContent",
+        value: product.pricing.price,
+        currency: product.pricing.currency,
+        contentIds: [product.id],
+        contents: [{ id: product.id, quantity: 1, item_price: product.pricing.price }],
+        contentName: product.title,
+      });
+    });
+  }, [product.id, product.pricing.price, product.pricing.currency, product.title]);
 
   const whatsAppHref = useMemo(() => {
     const num = whatsAppNumber(settings.contactPhone);
@@ -108,12 +124,36 @@ export function ProductDetailView({ product, relatedProducts }: ProductDetailVie
   }
 
   function handleAddToCart() {
-    addItem(buildCartPayload(quantity));
+    const payload = buildCartPayload(quantity);
+    addItem(payload);
     openCart();
+    void import("@/lib/pixel/track").then(({ trackPixelEvent }) => {
+      void trackPixelEvent({
+        eventName: "AddToCart",
+        value: product.pricing.price * quantity,
+        currency: product.pricing.currency,
+        contentIds: [product.id],
+        contents: [{ id: product.id, quantity, item_price: product.pricing.price }],
+        contentName: product.title,
+        numItems: quantity,
+      });
+    });
   }
 
   function handleBuyNow() {
-    addItem(buildCartPayload(quantity));
+    const payload = buildCartPayload(quantity);
+    addItem(payload);
+    void import("@/lib/pixel/track").then(({ trackPixelEvent }) => {
+      void trackPixelEvent({
+        eventName: "AddToCart",
+        value: product.pricing.price * quantity,
+        currency: product.pricing.currency,
+        contentIds: [product.id],
+        contents: [{ id: product.id, quantity, item_price: product.pricing.price }],
+        contentName: product.title,
+        numItems: quantity,
+      });
+    });
     router.push("/checkout");
   }
 

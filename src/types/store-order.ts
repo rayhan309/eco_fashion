@@ -37,4 +37,13 @@ export type CreateStoreOrderInput = {
   items: StoreOrderItem[];
   shippingFee: number;
   deliveryAreaId?: string;
+  tracking?: {
+    eventId?: string;
+    fbp?: string;
+    fbc?: string;
+    ttp?: string;
+    ttclid?: string;
+    eventSourceUrl?: string;
+    clientUserAgent?: string;
+  };
 };

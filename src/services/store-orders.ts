@@ -1,8 +1,14 @@
 import { api } from "@/lib/axios";
 import type { CreateStoreOrderInput, StoreOrder } from "@/types/store-order";
 
-export async function placeStoreOrder(input: CreateStoreOrderInput): Promise<StoreOrder> {
-  const { data } = await api.post<StoreOrder>("/api/store/orders", input);
+export type PlaceStoreOrderResult = StoreOrder & {
+  purchaseEventId?: string;
+};
+
+export async function placeStoreOrder(
+  input: CreateStoreOrderInput,
+): Promise<PlaceStoreOrderResult> {
+  const { data } = await api.post<PlaceStoreOrderResult>("/api/store/orders", input);
   return data;
 }
 

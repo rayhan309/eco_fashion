@@ -46,6 +46,17 @@ export function CollectionProductCard({ product, index = 0 }: CollectionProductC
       image: image?.url ?? "",
     });
     openCart();
+    void import("@/lib/pixel/track").then(({ trackPixelEvent }) => {
+      void trackPixelEvent({
+        eventName: "AddToCart",
+        value: product.pricing.price,
+        currency: product.pricing.currency,
+        contentIds: [product.id],
+        contents: [{ id: product.id, quantity: 1, item_price: product.pricing.price }],
+        contentName: product.title,
+        numItems: 1,
+      });
+    });
   }
 
   return (

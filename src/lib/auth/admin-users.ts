@@ -55,7 +55,7 @@ export async function findAdminUserByEmail(email: string) {
 
 export async function findAdminUserByEmailWithPassword(email: string) {
   const User = await getAdminUserModel();
-  return User.findOne({ email }).select("+passwordHash");
+  return User.findOne({ email: email.trim().toLowerCase() }).select("+passwordHash");
 }
 
 export async function listAdminUsers() {

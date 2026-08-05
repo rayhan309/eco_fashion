@@ -53,7 +53,7 @@ export const ADMIN_NAV: AdminNavEntry[] = [
     children: [
       { label: "General", href: "/dashboard/admin/settings" },
       { label: "Hero", href: "/dashboard/admin/settings/hero" },
-      { label: "Meta Pixel", href: "/dashboard/admin/settings/pixel" },
+      { label: "Pixel & CAPI", href: "/dashboard/admin/settings/pixel" },
       { label: "Steadfast", href: "/dashboard/admin/settings/steadfast" },
       { label: "Shipping", href: "/dashboard/admin/settings/shipping" },
       { label: "Contact", href: "/dashboard/admin/settings/contact" },
