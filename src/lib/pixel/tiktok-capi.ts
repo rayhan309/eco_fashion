@@ -1,4 +1,5 @@
 import type { SiteSettings } from "@/types/site-settings";
+import { normalizePixelContents } from "@/lib/pixel/contents";
 import { hashEmail, hashPhone } from "@/lib/pixel/hash";
 import type { PixelEventName, PixelEventPayload } from "@/lib/pixel/types";
 
@@ -26,21 +27,26 @@ function buildUser(payload: PixelEventPayload) {
 }
 
 function buildProperties(payload: PixelEventPayload) {
-  const properties: Record<string, unknown> = {};
+  const properties: Record<string, unknown> = {
+    content_type: payload.contentType ?? "product",
+  };
   if (payload.currency) properties.currency = payload.currency;
   if (payload.value != null) properties.value = payload.value;
-  if (payload.contentType) properties.content_type = payload.contentType;
   if (payload.contentName) properties.content_name = payload.contentName;
   if (payload.orderId) properties.order_id = payload.orderId;
-  if (payload.contents?.length) {
-    properties.contents = payload.contents.map((item) => ({
+
+  const contents = normalizePixelContents(payload.contents, payload.contentIds);
+  if (contents.length) {
+    properties.contents = contents.map((item) => ({
       content_id: item.id,
+      content_type: payload.contentType ?? "product",
+      content_name: payload.contentName,
       quantity: item.quantity,
       price: item.item_price,
     }));
-  } else if (payload.contentIds?.length) {
-    properties.contents = payload.contentIds.map((id) => ({ content_id: id }));
+    properties.content_id = contents.map((item) => item.id).join(",");
   }
+
   return properties;
 }
 

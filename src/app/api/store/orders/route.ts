@@ -35,13 +35,18 @@ export async function POST(request: Request) {
       eventSourceUrl: tracking?.eventSourceUrl,
       value: order.total,
       currency: order.currency,
-      contentIds: order.items.map((item) => item.productId),
-      contents: order.items.map((item) => ({
-        id: item.productId,
-        quantity: item.quantity,
-        item_price: item.price,
-      })),
+      contentIds: order.items
+        .map((item) => String(item.productId || item.slug || "").trim())
+        .filter(Boolean),
+      contents: order.items
+        .map((item) => ({
+          id: String(item.productId || item.slug || "").trim(),
+          quantity: item.quantity,
+          item_price: item.price,
+        }))
+        .filter((item) => item.id.length > 0),
       contentType: "product",
+      contentName: order.itemsSummary || undefined,
       numItems: order.itemCount,
       orderId: order.orderNumber,
       user: {

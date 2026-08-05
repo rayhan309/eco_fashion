@@ -82,11 +82,13 @@ export async function trackPixelEvent(input: TrackInput): Promise<string> {
 }
 
 export function cartContentsFromItems(
-  items: Array<{ productId: string; quantity: number; price: number }>,
+  items: Array<{ productId: string; slug?: string; quantity: number; price: number }>,
 ): PixelContentItem[] {
-  return items.map((item) => ({
-    id: item.productId,
-    quantity: item.quantity,
-    item_price: item.price,
-  }));
+  return items
+    .map((item) => ({
+      id: String(item.productId || item.slug || "").trim(),
+      quantity: item.quantity,
+      item_price: item.price,
+    }))
+    .filter((item) => item.id.length > 0);
 }

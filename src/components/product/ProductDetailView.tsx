@@ -87,17 +87,20 @@ export function ProductDetailView({ product, relatedProducts }: ProductDetailVie
   useEffect(() => {
     if (viewTracked.current) return;
     viewTracked.current = true;
+    const contentId = (product.id || product.slug || "").trim();
+    if (!contentId) return;
     void import("@/lib/pixel/track").then(({ trackPixelEvent }) => {
       void trackPixelEvent({
         eventName: "ViewContent",
         value: product.pricing.price,
         currency: product.pricing.currency,
-        contentIds: [product.id],
-        contents: [{ id: product.id, quantity: 1, item_price: product.pricing.price }],
+        contentIds: [contentId],
+        contents: [{ id: contentId, quantity: 1, item_price: product.pricing.price }],
+        contentType: "product",
         contentName: product.title,
       });
     });
-  }, [product.id, product.pricing.price, product.pricing.currency, product.title]);
+  }, [product.id, product.slug, product.pricing.price, product.pricing.currency, product.title]);
 
   const whatsAppHref = useMemo(() => {
     const num = whatsAppNumber(settings.contactPhone);
@@ -127,13 +130,16 @@ export function ProductDetailView({ product, relatedProducts }: ProductDetailVie
     const payload = buildCartPayload(quantity);
     addItem(payload);
     openCart();
+    const contentId = (product.id || product.slug || "").trim();
+    if (!contentId) return;
     void import("@/lib/pixel/track").then(({ trackPixelEvent }) => {
       void trackPixelEvent({
         eventName: "AddToCart",
         value: product.pricing.price * quantity,
         currency: product.pricing.currency,
-        contentIds: [product.id],
-        contents: [{ id: product.id, quantity, item_price: product.pricing.price }],
+        contentIds: [contentId],
+        contents: [{ id: contentId, quantity, item_price: product.pricing.price }],
+        contentType: "product",
         contentName: product.title,
         numItems: quantity,
       });
@@ -143,17 +149,21 @@ export function ProductDetailView({ product, relatedProducts }: ProductDetailVie
   function handleBuyNow() {
     const payload = buildCartPayload(quantity);
     addItem(payload);
-    void import("@/lib/pixel/track").then(({ trackPixelEvent }) => {
-      void trackPixelEvent({
-        eventName: "AddToCart",
-        value: product.pricing.price * quantity,
-        currency: product.pricing.currency,
-        contentIds: [product.id],
-        contents: [{ id: product.id, quantity, item_price: product.pricing.price }],
-        contentName: product.title,
-        numItems: quantity,
+    const contentId = (product.id || product.slug || "").trim();
+    if (contentId) {
+      void import("@/lib/pixel/track").then(({ trackPixelEvent }) => {
+        void trackPixelEvent({
+          eventName: "AddToCart",
+          value: product.pricing.price * quantity,
+          currency: product.pricing.currency,
+          contentIds: [contentId],
+          contents: [{ id: contentId, quantity, item_price: product.pricing.price }],
+          contentType: "product",
+          contentName: product.title,
+          numItems: quantity,
+        });
       });
-    });
+    }
     router.push("/checkout");
   }
 

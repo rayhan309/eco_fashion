@@ -34,6 +34,7 @@ export function CollectionProductCard({ product, index = 0 }: CollectionProductC
   const href = `/shop/${product.category_slug}/${product.slug}`;
 
   function handleAddToCart() {
+    const contentId = (product.id || product.slug || "").trim();
     addItem({
       productId: product.id,
       slug: product.slug,
@@ -46,13 +47,15 @@ export function CollectionProductCard({ product, index = 0 }: CollectionProductC
       image: image?.url ?? "",
     });
     openCart();
+    if (!contentId) return;
     void import("@/lib/pixel/track").then(({ trackPixelEvent }) => {
       void trackPixelEvent({
         eventName: "AddToCart",
         value: product.pricing.price,
         currency: product.pricing.currency,
-        contentIds: [product.id],
-        contents: [{ id: product.id, quantity: 1, item_price: product.pricing.price }],
+        contentIds: [contentId],
+        contents: [{ id: contentId, quantity: 1, item_price: product.pricing.price }],
+        contentType: "product",
         contentName: product.title,
         numItems: 1,
       });

@@ -1,5 +1,6 @@
 "use client";
 
+import { normalizePixelContents, pixelContentIds } from "@/lib/pixel/contents";
 import type { PixelContentItem, PixelEventName } from "@/lib/pixel/types";
 
 type FbqFn = (...args: unknown[]) => void;
@@ -71,33 +72,78 @@ type BrowserTrackInput = {
   orderId?: string;
 };
 
-function buildParams(input: BrowserTrackInput): Record<string, unknown> {
+function needsCommerceContents(eventName: PixelEventName) {
+  return (
+    eventName === "ViewContent" ||
+    eventName === "AddToCart" ||
+    eventName === "InitiateCheckout" ||
+    eventName === "Purchase"
+  );
+}
+
+function buildMetaParams(
+  input: BrowserTrackInput,
+  contents: PixelContentItem[],
+): Record<string, unknown> {
   const params: Record<string, unknown> = {};
   if (input.currency) params.currency = input.currency;
   if (input.value != null) params.value = input.value;
-  if (input.contentIds?.length) params.content_ids = input.contentIds;
-  if (input.contents?.length) {
-    params.contents = input.contents.map((item) => ({
+  if (contents.length) {
+    params.content_ids = pixelContentIds(contents);
+    params.contents = contents.map((item) => ({
       id: item.id,
       quantity: item.quantity,
       item_price: item.item_price,
     }));
   }
-  if (input.contentType) params.content_type = input.contentType;
+  params.content_type = input.contentType ?? "product";
   if (input.contentName) params.content_name = input.contentName;
   if (input.numItems != null) params.num_items = input.numItems;
   if (input.orderId) params.order_id = input.orderId;
   return params;
 }
 
+/** TikTok requires contents[].content_id (not Meta's `id`). */
+function buildTikTokParams(
+  input: BrowserTrackInput,
+  contents: PixelContentItem[],
+): Record<string, unknown> {
+  const params: Record<string, unknown> = {
+    content_type: input.contentType ?? "product",
+  };
+  if (input.currency) params.currency = input.currency;
+  if (input.value != null) params.value = input.value;
+  if (input.contentName) params.content_name = input.contentName;
+  if (input.orderId) params.order_id = input.orderId;
+
+  if (contents.length) {
+    params.contents = contents.map((item) => ({
+      content_id: item.id,
+      content_type: input.contentType ?? "product",
+      content_name: input.contentName,
+      quantity: item.quantity,
+      price: item.item_price,
+    }));
+    // Some TikTok diagnostics also check a top-level content_id.
+    params.content_id = contents.map((item) => item.id).join(",");
+  }
+
+  return params;
+}
+
 function fireOnce(input: BrowserTrackInput): { meta: boolean; tiktok: boolean } {
-  const params = buildParams(input);
+  const contents = normalizePixelContents(input.contents, input.contentIds);
+  if (needsCommerceContents(input.eventName) && contents.length === 0) {
+    console.warn(`[pixel] skipped ${input.eventName}: missing content_id`);
+    return { meta: false, tiktok: false };
+  }
+
   let meta = false;
   let tiktok = false;
 
   try {
     if (typeof window.fbq === "function") {
-      window.fbq("track", META_BROWSER_EVENT[input.eventName], params, {
+      window.fbq("track", META_BROWSER_EVENT[input.eventName], buildMetaParams(input, contents), {
         eventID: input.eventId,
       });
       meta = true;
@@ -108,15 +154,7 @@ function fireOnce(input: BrowserTrackInput): { meta: boolean; tiktok: boolean } 
 
   try {
     if (typeof window.ttq?.track === "function") {
-      const ttParams: Record<string, unknown> = { ...params };
-      if (input.contents?.length) {
-        ttParams.contents = input.contents.map((item) => ({
-          content_id: item.id,
-          quantity: item.quantity,
-          price: item.item_price,
-        }));
-      }
-      window.ttq.track(TIKTOK_BROWSER_EVENT[input.eventName], ttParams, {
+      window.ttq.track(TIKTOK_BROWSER_EVENT[input.eventName], buildTikTokParams(input, contents), {
         event_id: input.eventId,
       });
       tiktok = true;
