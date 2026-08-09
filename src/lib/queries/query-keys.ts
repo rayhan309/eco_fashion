@@ -13,6 +13,8 @@ export const queryKeys = {
     overview: () => [...queryKeys.admin.all, "overview"] as const,
     orders: () => [...queryKeys.admin.all, "orders"] as const,
     order: (id: string) => [...queryKeys.admin.orders(), id] as const,
+    orderProductOptions: () =>
+      [...queryKeys.admin.orders(), "product-options"] as const,
     productsCatalog: () => [...queryKeys.admin.all, "products-catalog"] as const,
     categories: () => [...queryKeys.admin.all, "categories"] as const,
     customers: () => [...queryKeys.admin.all, "customers"] as const,

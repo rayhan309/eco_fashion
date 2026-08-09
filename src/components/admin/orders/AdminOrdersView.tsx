@@ -37,6 +37,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AdminOrderDetailDialog } from "@/components/admin/orders/AdminOrderDetailDialog";
 import { AdminOrderEditDialog } from "@/components/admin/orders/AdminOrderEditDialog";
@@ -109,6 +110,10 @@ function phoneToWhatsApp(phone: string) {
 function phoneToTel(phone: string) {
   const digits = phone.replace(/\D/g, "");
   return `tel:+${digits.startsWith("880") ? digits : `88${digits.replace(/^0/, "")}`}`;
+}
+
+function normalizePhone(phone: string) {
+  return phone.replace(/\D/g, "").replace(/^880/, "0");
 }
 
 function matchesDateRange(createdAt: string, range: DateRange) {
@@ -194,6 +199,20 @@ export function AdminOrdersView({ orders }: AdminOrdersViewProps) {
       );
     });
   }, [orders, search, statusFilter, dateRange]);
+
+  const repeatPhones = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const order of orders) {
+      const phone = normalizePhone(order.customerPhone);
+      if (!phone) continue;
+      counts.set(phone, (counts.get(phone) ?? 0) + 1);
+    }
+    const repeats = new Set<string>();
+    for (const [phone, count] of counts) {
+      if (count > 1) repeats.add(phone);
+    }
+    return repeats;
+  }, [orders]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -487,9 +506,45 @@ export function AdminOrdersView({ orders }: AdminOrdersViewProps) {
                         #{order.orderNumber}
                       </TableCell>
                       <TableCell sx={{ minWidth: 200 }}>
-                        <Typography sx={{ fontSize: "0.85rem", fontWeight: 600 }}>
-                          {order.customerName}
-                        </Typography>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            flexWrap: "wrap",
+                            alignItems: "center",
+                            gap: 0.75,
+                          }}
+                        >
+                          <Typography sx={{ fontSize: "0.85rem", fontWeight: 600 }}>
+                            {order.customerName}
+                          </Typography>
+                          {repeatPhones.has(normalizePhone(order.customerPhone)) ? (
+                            <Box
+                              component={Link}
+                              href={`/dashboard/admin/reports/repeat-customers?phone=${encodeURIComponent(order.customerPhone)}`}
+                              sx={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                px: 0.9,
+                                py: 0.15,
+                                borderRadius: 999,
+                                border: "1px solid #f87171",
+                                bgcolor: "#fef2f2",
+                                color: "#dc2626",
+                                fontSize: "0.65rem",
+                                fontWeight: 600,
+                                lineHeight: 1.4,
+                                whiteSpace: "nowrap",
+                                textDecoration: "none",
+                                "&:hover": {
+                                  bgcolor: "#fee2e2",
+                                  borderColor: "#ef4444",
+                                },
+                              }}
+                            >
+                              Repeat customer
+                            </Box>
+                          ) : null}
+                        </Box>
                         <Box sx={{ display: "flex", alignItems: "center", gap: 0.25, mt: 0.35 }}>
                           <Typography sx={{ fontSize: "0.8rem", color: "text.secondary" }}>
                             {order.customerPhone}

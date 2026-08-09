@@ -13,7 +13,10 @@ export type StoreOrderCustomer = {
   deliveryArea: string;
 };
 
-export type StoreOrderItem = CartItem;
+export type StoreOrderItem = CartItem & {
+  /** Per-line discount amount (BDT), applied after price × qty. */
+  discount?: number;
+};
 
 export type StoreOrder = {
   id: string;
@@ -25,6 +28,8 @@ export type StoreOrder = {
   itemsSummary: string;
   subtotal: number;
   shippingFee: number;
+  /** Order-level discount amount (BDT). */
+  discount: number;
   total: number;
   currency: "BDT";
   paymentMethod: "cod";

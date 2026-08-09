@@ -9,7 +9,7 @@ export const ROLE_ALLOWED_PREFIXES: Record<AdminRole, string[]> = {
     "/dashboard/admin/collections",
     "/dashboard/admin/customers",
   ],
-  moderator: ["/dashboard/admin/orders"],
+  moderator: ["/dashboard/admin/orders", "/dashboard/admin/reports"],
 };
 
 export const ROLE_HOME: Record<AdminRole, string> = {

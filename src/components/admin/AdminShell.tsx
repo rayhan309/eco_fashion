@@ -45,6 +45,9 @@ function isLinkActive(pathname: string, href: string) {
   if (href === "/dashboard/admin/products") {
     return pathname === href;
   }
+  if (href === "/dashboard/admin/reports") {
+    return pathname === href;
+  }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
