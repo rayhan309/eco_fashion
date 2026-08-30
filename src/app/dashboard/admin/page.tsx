@@ -10,6 +10,9 @@ export const metadata: Metadata = {
   title: "Overview",
 };
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function AdminOverviewPage() {
   const queryClient = getQueryClient();
 

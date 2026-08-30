@@ -48,8 +48,20 @@ export type SiteSettings = {
   heroSlides: HeroSlide[];
   heroSideBanners: HeroSideBanner[];
   socialLinks: SiteSocialLink[];
+  /** Meta browser pixel */
   metaPixelEnabled: boolean;
   metaPixelId: string;
+  /** Meta Conversions API */
+  metaCapiEnabled: boolean;
+  metaCapiToken: string;
+  metaCapiTestEventCode: string;
+  /** TikTok browser pixel */
+  tiktokPixelEnabled: boolean;
+  tiktokPixelId: string;
+  /** TikTok Events API (CAPI) */
+  tiktokCapiEnabled: boolean;
+  tiktokCapiToken: string;
+  tiktokCapiTestEventCode: string;
   steadfastEnabled: boolean;
   steadfastBaseUrl: string;
   steadfastApiKey: string;
@@ -58,5 +70,8 @@ export type SiteSettings = {
 
 export type PublicSiteSettings = Omit<
   SiteSettings,
-  "steadfastApiKey" | "steadfastSecretKey"
+  | "steadfastApiKey"
+  | "steadfastSecretKey"
+  | "metaCapiToken"
+  | "tiktokCapiToken"
 >;

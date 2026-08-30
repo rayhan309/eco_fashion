@@ -120,6 +120,11 @@ export function buildInvoiceHtml(order: StoreOrder, shop: PrintShopInfo): string
   <div class="totals">
     <div class="row"><span class="muted">Subtotal</span><span>${formatCurrency(order.subtotal, order.currency)}</span></div>
     <div class="row"><span class="muted">Delivery</span><span>${delivery}</span></div>
+    ${
+      (order.discount ?? 0) > 0
+        ? `<div class="row"><span class="muted">Discount</span><span>−${formatCurrency(order.discount, order.currency)}</span></div>`
+        : ""
+    }
     <div class="row grand"><span>Amount due</span><span>${formatCurrency(order.total, order.currency)}</span></div>
   </div>
 

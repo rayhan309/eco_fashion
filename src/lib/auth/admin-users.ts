@@ -19,22 +19,24 @@ async function getAdminUserModel() {
   return AdminUser;
 }
 
-/** Creates the first Super Admin from env if none exists. */
+/**
+ * Optionally seeds the first Super Admin from env.
+ * Does nothing (returns null) when env is missing and no super admin exists yet —
+ * live deployments can rely on DB users without SUPER_ADMIN_* env vars.
+ */
 export async function ensureSuperAdmin() {
+  const User = await getAdminUserModel();
+  const existing = await User.findOne({ role: "super_admin" });
+  if (existing) {
+    return toPublicAdminUser(existing);
+  }
+
   const email = process.env.SUPER_ADMIN_EMAIL?.trim().toLowerCase();
   const password = process.env.SUPER_ADMIN_PASSWORD;
   const name = process.env.SUPER_ADMIN_NAME?.trim() || "Super Admin";
 
   if (!email || !password) {
-    throw new Error(
-      "Set SUPER_ADMIN_EMAIL and SUPER_ADMIN_PASSWORD to seed the Super Admin.",
-    );
-  }
-
-  const User = await getAdminUserModel();
-  const existing = await User.findOne({ role: "super_admin" });
-  if (existing) {
-    return toPublicAdminUser(existing);
+    return null;
   }
 
   const passwordHash = await hashPassword(password);
@@ -55,7 +57,7 @@ export async function findAdminUserByEmail(email: string) {
 
 export async function findAdminUserByEmailWithPassword(email: string) {
   const User = await getAdminUserModel();
-  return User.findOne({ email }).select("+passwordHash");
+  return User.findOne({ email: email.trim().toLowerCase() }).select("+passwordHash");
 }
 
 export async function listAdminUsers() {

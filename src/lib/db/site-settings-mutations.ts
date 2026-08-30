@@ -10,7 +10,17 @@ export async function upsertSiteSettingsInDb(
   await dbConnect();
   const Model = getSeedModel("site_settings");
   const current = await getSiteSettingsFromDbOrFallback();
-  const merged: SiteSettings = { ...current, ...partial };
+
+  // Empty token fields mean "keep existing" (password-style inputs).
+  const safePartial: Partial<SiteSettings> = { ...partial };
+  if (safePartial.metaCapiToken !== undefined && !safePartial.metaCapiToken.trim()) {
+    delete safePartial.metaCapiToken;
+  }
+  if (safePartial.tiktokCapiToken !== undefined && !safePartial.tiktokCapiToken.trim()) {
+    delete safePartial.tiktokCapiToken;
+  }
+
+  const merged: SiteSettings = { ...current, ...safePartial };
 
   if (partial.primaryColor && !partial.primaryColorHover) {
     const colors = expandBrandColors(partial.primaryColor);

@@ -12,10 +12,11 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { useMemo, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { ADMIN_ACCENT } from "@/lib/constants/admin";
 import { useAdminSiteSettings } from "@/hooks/useAdminSiteSettings";
+import type { SiteSettings } from "@/types/site-settings";
 
 type PlatformValues = {
   pixelId: string;
@@ -44,50 +45,79 @@ const defaultPlatform = (overrides?: Partial<PlatformValues>): PlatformValues =>
   ...overrides,
 });
 
+function hasCapiToken(platform: PlatformValues) {
+  return platform.capiToken.trim().length > 0 || platform.capiTokenSaved;
+}
+
 function platformActive(platform: PlatformValues) {
   const hasPixel = platform.pixelId.trim().length > 0;
   const browserOk = platform.browserPixelEnabled && hasPixel;
-  const capiOk =
-    platform.capiEnabled &&
-    hasPixel &&
-    (platform.capiToken.trim().length > 0 || platform.capiTokenSaved);
-  return browserOk || capiOk;
+  const capiOk = platform.capiEnabled && hasPixel && hasCapiToken(platform);
+  const testOk =
+    Boolean(platform.testEventCode.trim()) && hasPixel && hasCapiToken(platform);
+  return browserOk || capiOk || testOk;
+}
+
+function statusLabel(platform: PlatformValues) {
+  const hasPixel = platform.pixelId.trim().length > 0;
+  const browserOk = platform.browserPixelEnabled && hasPixel;
+  const capiOk = platform.capiEnabled && hasPixel && hasCapiToken(platform);
+  const testCode = platform.testEventCode.trim();
+
+  if (browserOk && capiOk) {
+    return "browser pixel and CAPI are enabled (deduplication via event_id)";
+  }
+  if (browserOk) return "browser pixel is enabled";
+  if (capiOk) return "CAPI is enabled";
+  if (testCode && hasPixel && hasCapiToken(platform)) {
+    return `Events API test mode (${testCode})`;
+  }
+  return null;
 }
 
 function PlatformStatusBanner({
   platformName,
-  active,
-  deduplicationNote,
+  platform,
 }: {
   platformName: string;
-  active: boolean;
-  deduplicationNote?: boolean;
+  platform: PlatformValues;
 }) {
+  const active = platformActive(platform);
+  const detail = statusLabel(platform);
+  const testCode = platform.testEventCode.trim();
+  const needsTokenForTest = Boolean(testCode) && !hasCapiToken(platform);
+
   return (
-    <Box
-      sx={{
-        mt: 2,
-        px: 2,
-        py: 1.25,
-        borderRadius: 1,
-        bgcolor: active ? "rgba(31,111,91,0.1)" : "#f1f5f9",
-        border: "1px solid",
-        borderColor: active ? "rgba(31,111,91,0.25)" : "#e2e8f0",
-      }}
-    >
-      <Typography
+    <Box sx={{ mt: 2 }}>
+      <Box
         sx={{
-          fontSize: "0.85rem",
-          fontWeight: 600,
-          color: active ? ADMIN_ACCENT : "text.secondary",
+          px: 2,
+          py: 1.25,
+          borderRadius: 1,
+          bgcolor: active ? "rgba(31,111,91,0.1)" : "#f1f5f9",
+          border: "1px solid",
+          borderColor: active ? "rgba(31,111,91,0.25)" : "#e2e8f0",
         }}
       >
-        {active
-          ? `Active — ${platformName} browser pixel and CAPI tracking are enabled.${
-              deduplicationNote ? " (Deduplication enabled)" : ""
-            }`
-          : `${platformName} tracking is disabled.`}
-      </Typography>
+        <Typography
+          sx={{
+            fontSize: "0.85rem",
+            fontWeight: 600,
+            color: active ? ADMIN_ACCENT : "text.secondary",
+          }}
+        >
+          {active
+            ? `Active — ${platformName} ${detail}.`
+            : `${platformName} tracking is disabled.`}
+        </Typography>
+      </Box>
+      {needsTokenForTest ? (
+        <Alert severity="warning" sx={{ mt: 1.5, borderRadius: 1 }}>
+          Test event code <strong>{testCode}</strong> is set, but CAPI access token is
+          missing. Paste the Events API token and Save — otherwise nothing shows in
+          TikTok/Meta Test Events (server).
+        </Alert>
+      ) : null}
     </Box>
   );
 }
@@ -141,13 +171,7 @@ export function MetaPixelSettings() {
   } = useForm<PixelCapiFormValues>({
     defaultValues: {
       meta: defaultPlatform(),
-      tiktok: defaultPlatform({
-        pixelId: "D922EVDC77UD7MKJJDDB",
-        browserPixelEnabled: true,
-        capiEnabled: true,
-        capiTokenSaved: true,
-        testEventCode: "TEST05989",
-      }),
+      tiktok: defaultPlatform(),
     },
     mode: "onBlur",
   });
@@ -158,13 +182,16 @@ export function MetaPixelSettings() {
       meta: defaultPlatform({
         pixelId: siteSettings.metaPixelId,
         browserPixelEnabled: siteSettings.metaPixelEnabled,
+        capiEnabled: siteSettings.metaCapiEnabled,
+        capiTokenSaved: Boolean(siteSettings.metaCapiToken),
+        testEventCode: siteSettings.metaCapiTestEventCode,
       }),
       tiktok: defaultPlatform({
-        pixelId: "D922EVDC77UD7MKJJDDB",
-        browserPixelEnabled: true,
-        capiEnabled: true,
-        capiTokenSaved: true,
-        testEventCode: "TEST05989",
+        pixelId: siteSettings.tiktokPixelId,
+        browserPixelEnabled: siteSettings.tiktokPixelEnabled,
+        capiEnabled: siteSettings.tiktokCapiEnabled,
+        capiTokenSaved: Boolean(siteSettings.tiktokCapiToken),
+        testEventCode: siteSettings.tiktokCapiTestEventCode,
       }),
     });
   }, [siteSettings, reset]);
@@ -172,17 +199,32 @@ export function MetaPixelSettings() {
   const meta = watch("meta");
   const tiktok = watch("tiktok");
 
-  const metaActive = useMemo(() => platformActive(meta), [meta]);
-  const tiktokActive = useMemo(() => platformActive(tiktok), [tiktok]);
-
   async function onSubmit(values: PixelCapiFormValues) {
     setSaveError(null);
     try {
-      await saveMutation.mutateAsync({
+      const patch: Partial<SiteSettings> = {
         metaPixelId: values.meta.pixelId.trim(),
         metaPixelEnabled:
           values.meta.browserPixelEnabled && values.meta.pixelId.trim().length > 0,
-      });
+        metaCapiEnabled:
+          values.meta.capiEnabled && values.meta.pixelId.trim().length > 0,
+        metaCapiTestEventCode: values.meta.testEventCode.trim(),
+        tiktokPixelId: values.tiktok.pixelId.trim(),
+        tiktokPixelEnabled:
+          values.tiktok.browserPixelEnabled && values.tiktok.pixelId.trim().length > 0,
+        tiktokCapiEnabled:
+          values.tiktok.capiEnabled && values.tiktok.pixelId.trim().length > 0,
+        tiktokCapiTestEventCode: values.tiktok.testEventCode.trim(),
+      };
+
+      if (values.meta.capiToken.trim()) {
+        patch.metaCapiToken = values.meta.capiToken.trim();
+      }
+      if (values.tiktok.capiToken.trim()) {
+        patch.tiktokCapiToken = values.tiktok.capiToken.trim();
+      }
+
+      await saveMutation.mutateAsync(patch);
       setSaved(true);
       window.setTimeout(() => setSaved(false), 3000);
     } catch {
@@ -226,7 +268,7 @@ export function MetaPixelSettings() {
           </Typography>
           <Typography sx={{ mt: 0.5, fontSize: "0.9rem", color: "text.secondary", maxWidth: 720 }}>
             Set up Meta (Facebook) and TikTok browser pixels plus server-side Conversions API
-            (CAPI).
+            (CAPI). Events use a shared event_id for deduplication.
           </Typography>
         </Box>
 
@@ -262,205 +304,209 @@ export function MetaPixelSettings() {
 
       <Stack spacing={2} component="form" onSubmit={handleSubmit(onSubmit)} noValidate>
         <PlatformCard>
-            <SectionTitle dotColor="#1877f2" label="Meta (Facebook) Pixel & CAPI" />
-            <Stack spacing={2} sx={{ mt: 2 }}>
-              <Grid container spacing={2} sx={{ alignItems: "flex-start" }}>
-                <Grid size={{ xs: 12, md: 8 }}>
-                  <TextField
-                    label="Pixel ID"
-                    fullWidth
-                    placeholder="1234567890123456"
-                    error={Boolean(errors.meta?.pixelId)}
-                    helperText={
-                      errors.meta?.pixelId?.message ??
-                      "Events Manager → Data sources → Pixel → Settings → Pixel ID"
-                    }
-                    {...register("meta.pixelId", {
-                      validate: (value) => {
-                        const m = watch("meta");
-                        if (!m.browserPixelEnabled && !m.capiEnabled) return true;
-                        if (!value.trim()) return "Pixel ID is required when tracking is on";
-                        if (!META_PIXEL_PATTERN.test(value.trim())) {
-                          return "Enter a valid numeric Pixel ID";
-                        }
-                        return true;
-                      },
-                    })}
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, md: 4 }}>
-                  <Controller
-                    name="meta.browserPixelEnabled"
-                    control={control}
-                    render={({ field }) => (
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={field.value}
-                            onChange={(_, checked) => field.onChange(checked)}
-                          />
-                        }
-                        label="Enable browser pixel"
-                        sx={{ mt: { md: 1 } }}
-                      />
-                    )}
-                  />
-                </Grid>
+          <SectionTitle dotColor="#1877f2" label="Meta (Facebook) Pixel & CAPI" />
+          <Stack spacing={2} sx={{ mt: 2 }}>
+            <Grid container spacing={2} sx={{ alignItems: "flex-start" }}>
+              <Grid size={{ xs: 12, md: 8 }}>
+                <TextField
+                  label="Pixel ID"
+                  fullWidth
+                  placeholder="1234567890123456"
+                  error={Boolean(errors.meta?.pixelId)}
+                  helperText={
+                    errors.meta?.pixelId?.message ??
+                    "Events Manager → Data sources → Pixel → Settings → Pixel ID"
+                  }
+                  {...register("meta.pixelId", {
+                    validate: (value) => {
+                      const m = watch("meta");
+                      if (!m.browserPixelEnabled && !m.capiEnabled) return true;
+                      if (!value.trim()) return "Pixel ID is required when tracking is on";
+                      if (!META_PIXEL_PATTERN.test(value.trim())) {
+                        return "Enter a valid numeric Pixel ID";
+                      }
+                      return true;
+                    },
+                  })}
+                />
               </Grid>
-
-              <Grid container spacing={2}>
-                <Grid size={{ xs: 12, md: 8 }}>
-                  <TextField
-                    label="CAPI access token"
-                    fullWidth
-                    type="password"
-                    placeholder="EAA..."
-                    helperText="Events Manager → Settings → Conversions API → Generate access token"
-                    {...register("meta.capiToken", {
-                      validate: (value) => {
-                        const m = watch("meta");
-                        if (!m.capiEnabled) return true;
-                        if (value.trim() || m.capiTokenSaved) return true;
-                        return "Access token is required when CAPI is enabled";
-                      },
-                    })}
-                    error={Boolean(errors.meta?.capiToken)}
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, md: 4 }}>
-                  <TextField
-                    label="Test event code (optional)"
-                    fullWidth
-                    placeholder="TEST12345"
-                    helperText="Events Manager → Test events"
-                    {...register("meta.testEventCode")}
-                  />
-                </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <Controller
+                  name="meta.browserPixelEnabled"
+                  control={control}
+                  render={({ field }) => (
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={field.value}
+                          onChange={(_, checked) => field.onChange(checked)}
+                        />
+                      }
+                      label="Enable browser pixel"
+                      sx={{ mt: { md: 1 } }}
+                    />
+                  )}
+                />
               </Grid>
+            </Grid>
 
-              <Controller
-                name="meta.capiEnabled"
-                control={control}
-                render={({ field }) => (
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={field.value}
-                        onChange={(_, checked) => field.onChange(checked)}
-                      />
-                    }
-                    label="Enable Conversions API (CAPI)"
-                  />
-                )}
-              />
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12, md: 8 }}>
+                <TextField
+                  label="CAPI access token"
+                  fullWidth
+                  type="password"
+                  placeholder={
+                    meta.capiTokenSaved
+                      ? "Saved — enter a new token to replace"
+                      : "EAA..."
+                  }
+                  helperText="Events Manager → Settings → Conversions API → Generate access token"
+                  {...register("meta.capiToken", {
+                    validate: (value) => {
+                      const m = watch("meta");
+                      const needsToken =
+                        m.capiEnabled || Boolean(m.testEventCode.trim());
+                      if (!needsToken) return true;
+                      if (value.trim() || m.capiTokenSaved) return true;
+                      return "Access token is required for CAPI / test events";
+                    },
+                  })}
+                  error={Boolean(errors.meta?.capiToken)}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField
+                  label="Test event code (optional)"
+                  fullWidth
+                  placeholder="TEST12345"
+                  helperText="Server Events API only — needs access token"
+                  {...register("meta.testEventCode")}
+                />
+              </Grid>
+            </Grid>
 
-              <PlatformStatusBanner platformName="Meta" active={metaActive} />
-            </Stack>
+            <Controller
+              name="meta.capiEnabled"
+              control={control}
+              render={({ field }) => (
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={field.value}
+                      onChange={(_, checked) => field.onChange(checked)}
+                    />
+                  }
+                  label="Enable Conversions API (CAPI)"
+                />
+              )}
+            />
+
+            <PlatformStatusBanner platformName="Meta" platform={meta} />
+          </Stack>
         </PlatformCard>
 
         <PlatformCard>
-            <SectionTitle dotColor="#fe2c55" label="TikTok Pixel & CAPI" />
-            <Stack spacing={2} sx={{ mt: 2 }}>
-              <Grid container spacing={2} sx={{ alignItems: "flex-start" }}>
-                <Grid size={{ xs: 12, md: 8 }}>
-                  <TextField
-                    label="TikTok Pixel ID"
-                    fullWidth
-                    placeholder="D922EVDC77UD7MKJJDDB"
-                    error={Boolean(errors.tiktok?.pixelId)}
-                    helperText={
-                      errors.tiktok?.pixelId?.message ??
-                      "TikTok Ads Manager → Assets → Events → Web → Pixel code"
-                    }
-                    {...register("tiktok.pixelId", {
-                      validate: (value) => {
-                        const t = watch("tiktok");
-                        if (!t.browserPixelEnabled && !t.capiEnabled) return true;
-                        if (!value.trim()) return "Pixel ID is required when tracking is on";
-                        if (!TIKTOK_PIXEL_PATTERN.test(value.trim())) {
-                          return "Enter a valid TikTok Pixel ID";
-                        }
-                        return true;
-                      },
-                    })}
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, md: 4 }}>
-                  <Controller
-                    name="tiktok.browserPixelEnabled"
-                    control={control}
-                    render={({ field }) => (
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={field.value}
-                            onChange={(_, checked) => field.onChange(checked)}
-                          />
-                        }
-                        label="Enable browser pixel"
-                        sx={{ mt: { md: 1 } }}
-                      />
-                    )}
-                  />
-                </Grid>
+          <SectionTitle dotColor="#fe2c55" label="TikTok Pixel & CAPI" />
+          <Stack spacing={2} sx={{ mt: 2 }}>
+            <Grid container spacing={2} sx={{ alignItems: "flex-start" }}>
+              <Grid size={{ xs: 12, md: 8 }}>
+                <TextField
+                  label="TikTok Pixel ID"
+                  fullWidth
+                  placeholder="D922EVDC77UD7MKJJDDB"
+                  error={Boolean(errors.tiktok?.pixelId)}
+                  helperText={
+                    errors.tiktok?.pixelId?.message ??
+                    "TikTok Ads Manager → Assets → Events → Web → Pixel code"
+                  }
+                  {...register("tiktok.pixelId", {
+                    validate: (value) => {
+                      const t = watch("tiktok");
+                      if (!t.browserPixelEnabled && !t.capiEnabled) return true;
+                      if (!value.trim()) return "Pixel ID is required when tracking is on";
+                      if (!TIKTOK_PIXEL_PATTERN.test(value.trim())) {
+                        return "Enter a valid TikTok Pixel ID";
+                      }
+                      return true;
+                    },
+                  })}
+                />
               </Grid>
-
-              <Grid container spacing={2}>
-                <Grid size={{ xs: 12, md: 8 }}>
-                  <TextField
-                    label="CAPI access token"
-                    fullWidth
-                    type="password"
-                    placeholder={
-                      tiktok.capiTokenSaved
-                        ? "Saved — enter a new token to replace"
-                        : "Enter access token"
-                    }
-                    helperText="TikTok Events Manager → Settings → Events API → Generate token"
-                    {...register("tiktok.capiToken", {
-                      validate: (value) => {
-                        const t = watch("tiktok");
-                        if (!t.capiEnabled) return true;
-                        if (value.trim() || t.capiTokenSaved) return true;
-                        return "Access token is required when CAPI is enabled";
-                      },
-                    })}
-                    error={Boolean(errors.tiktok?.capiToken)}
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, md: 4 }}>
-                  <TextField
-                    label="Test event code (optional)"
-                    fullWidth
-                    placeholder="TEST05989"
-                    helperText="TikTok Events Manager → Test events"
-                    {...register("tiktok.testEventCode")}
-                  />
-                </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <Controller
+                  name="tiktok.browserPixelEnabled"
+                  control={control}
+                  render={({ field }) => (
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={field.value}
+                          onChange={(_, checked) => field.onChange(checked)}
+                        />
+                      }
+                      label="Enable browser pixel"
+                      sx={{ mt: { md: 1 } }}
+                    />
+                  )}
+                />
               </Grid>
+            </Grid>
 
-              <Controller
-                name="tiktok.capiEnabled"
-                control={control}
-                render={({ field }) => (
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={field.value}
-                        onChange={(_, checked) => field.onChange(checked)}
-                      />
-                    }
-                    label="Enable Conversions API (CAPI)"
-                  />
-                )}
-              />
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12, md: 8 }}>
+                <TextField
+                  label="CAPI access token"
+                  fullWidth
+                  type="password"
+                  placeholder={
+                    tiktok.capiTokenSaved
+                      ? "Saved — enter a new token to replace"
+                      : "Enter access token"
+                  }
+                  helperText="TikTok Events Manager → Settings → Events API → Generate token"
+                  {...register("tiktok.capiToken", {
+                    validate: (value) => {
+                      const t = watch("tiktok");
+                      const needsToken =
+                        t.capiEnabled || Boolean(t.testEventCode.trim());
+                      if (!needsToken) return true;
+                      if (value.trim() || t.capiTokenSaved) return true;
+                      return "Access token is required for CAPI / test events";
+                    },
+                  })}
+                  error={Boolean(errors.tiktok?.capiToken)}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField
+                  label="Test event code (optional)"
+                  fullWidth
+                  placeholder="TEST05989"
+                  helperText="Server Events API only — needs access token"
+                  {...register("tiktok.testEventCode")}
+                />
+              </Grid>
+            </Grid>
 
-              <PlatformStatusBanner
-                platformName="TikTok"
-                active={tiktokActive}
-                deduplicationNote
-              />
-            </Stack>
+            <Controller
+              name="tiktok.capiEnabled"
+              control={control}
+              render={({ field }) => (
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={field.value}
+                      onChange={(_, checked) => field.onChange(checked)}
+                    />
+                  }
+                  label="Enable Conversions API (CAPI)"
+                />
+              )}
+            />
+
+            <PlatformStatusBanner platformName="TikTok" platform={tiktok} />
+          </Stack>
         </PlatformCard>
       </Stack>
     </Box>

@@ -1,8 +1,9 @@
 "use client";
 
-import Script from "next/script";
-import type { ReactNode } from "react";
+import { usePathname } from "next/navigation";
+import { useEffect, useRef, type ReactNode } from "react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { trackPixelEvent } from "@/lib/pixel/track";
 
 type SiteSettingsRootProps = {
   children: ReactNode;
@@ -10,6 +11,52 @@ type SiteSettingsRootProps = {
 
 export function SiteSettingsRoot({ children }: SiteSettingsRootProps) {
   const settings = useSiteSettings();
+  const pathname = usePathname();
+  const lastPath = useRef<string | null>(null);
+  const skipFirst = useRef(true);
+
+  const metaOn = settings.metaPixelEnabled && Boolean(settings.metaPixelId.trim());
+  const tiktokOn = settings.tiktokPixelEnabled && Boolean(settings.tiktokPixelId.trim());
+  const metaCapiOn =
+    settings.metaCapiEnabled ||
+    Boolean((settings.metaCapiTestEventCode ?? "").trim());
+  const tiktokCapiOn =
+    settings.tiktokCapiEnabled ||
+    Boolean((settings.tiktokCapiTestEventCode ?? "").trim());
+
+  // Base PageView is fired by server-rendered TrackingPixels (ttq.page / fbq PageView).
+  // This effect covers SPA navigations + CAPI with shared event_id.
+  useEffect(() => {
+    if (!metaOn && !tiktokOn && !metaCapiOn && !tiktokCapiOn) {
+      return;
+    }
+
+    // First paint: base pixel already called page()/PageView — only send CAPI once.
+    if (skipFirst.current) {
+      skipFirst.current = false;
+      lastPath.current = pathname;
+      const timer = window.setTimeout(() => {
+        void trackPixelEvent({ eventName: "PageView", skipBrowser: true });
+      }, 250);
+      return () => window.clearTimeout(timer);
+    }
+
+    if (lastPath.current === pathname) return;
+    lastPath.current = pathname;
+
+    const timer = window.setTimeout(() => {
+      if (tiktokOn) {
+        try {
+          window.ttq?.page?.();
+        } catch {
+          /* ignore */
+        }
+      }
+      void trackPixelEvent({ eventName: "PageView" });
+    }, 200);
+
+    return () => window.clearTimeout(timer);
+  }, [pathname, metaOn, tiktokOn, metaCapiOn, tiktokCapiOn]);
 
   return (
     <>
@@ -24,16 +71,6 @@ export function SiteSettingsRoot({ children }: SiteSettingsRootProps) {
 }`,
         }}
       />
-      {settings.metaPixelEnabled && settings.metaPixelId ? (
-        <Script id="meta-pixel" strategy="afterInteractive">
-          {`!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
-n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
-t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
-document,'script','https://connect.facebook.net/en_US/fbevents.js');
-fbq('init','${settings.metaPixelId}');fbq('track','PageView');`}
-        </Script>
-      ) : null}
       {children}
     </>
   );

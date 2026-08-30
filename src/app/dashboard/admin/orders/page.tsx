@@ -10,6 +10,10 @@ export const metadata: Metadata = {
   title: "Orders",
 };
 
+/** Always read live orders from MongoDB — never serve a cached page after checkout. */
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function AdminOrdersPage() {
   const queryClient = getQueryClient();
 

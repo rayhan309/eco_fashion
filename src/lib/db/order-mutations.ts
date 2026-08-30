@@ -33,6 +33,23 @@ function itemCount(items: CreateStoreOrderInput["items"]): number {
   return items.reduce((sum, item) => sum + item.quantity, 0);
 }
 
+function lineNet(price: number, quantity: number, discount = 0): number {
+  return Math.max(0, price * quantity - Math.max(0, discount));
+}
+
+function calcSubtotal(
+  items: Array<{ price: number; quantity: number; discount?: number }>,
+): number {
+  return items.reduce(
+    (sum, item) => sum + lineNet(item.price, item.quantity, item.discount ?? 0),
+    0,
+  );
+}
+
+function calcTotal(subtotal: number, shippingFee: number, discount = 0): number {
+  return Math.max(0, subtotal + Math.max(0, shippingFee) - Math.max(0, discount));
+}
+
 function nextOrderNumber(): string {
   const stamp = Date.now().toString().slice(-6);
   const rand = Math.floor(Math.random() * 90 + 10);
@@ -62,16 +79,24 @@ export function mapStoreOrderDoc(doc: Record<string, unknown>): StoreOrder {
     },
     items: items.map((row) => {
       const item = (row ?? {}) as Record<string, unknown>;
+      const compareAt = item.compareAtPrice;
       return {
         productId: String(item.productId ?? ""),
         slug: String(item.slug ?? ""),
         name: String(item.name ?? ""),
         price: Number(item.price ?? 0),
         compareAtPrice:
+<<<<<<< HEAD
           item.compareAtPrice != null && item.compareAtPrice !== ""
             ? Number(item.compareAtPrice)
             : null,
         discount: Number(item.discount ?? 0),
+=======
+          compareAt === null || compareAt === undefined || compareAt === ""
+            ? null
+            : Number(compareAt),
+        discount: Math.max(0, Number(item.discount ?? 0)),
+>>>>>>> cf78953116bac3a4109b3e0c1d7b2f731d0144d0
         currency: item.currency === "USD" ? "USD" : "BDT",
         quantity: Number(item.quantity ?? 1),
         size: (String(item.size ?? "M") as StoreOrder["items"][number]["size"]),
@@ -83,7 +108,11 @@ export function mapStoreOrderDoc(doc: Record<string, unknown>): StoreOrder {
     itemsSummary: String(doc.itemsSummary ?? ""),
     subtotal: Number(doc.subtotal ?? 0),
     shippingFee: Number(doc.shippingFee ?? 0),
+<<<<<<< HEAD
     orderDiscount: Number(doc.discount ?? doc.orderDiscount ?? 0),
+=======
+    discount: Math.max(0, Number(doc.discount ?? 0)),
+>>>>>>> cf78953116bac3a4109b3e0c1d7b2f731d0144d0
     total: Number(doc.total ?? 0),
     currency: "BDT",
     paymentMethod: "cod",
@@ -140,9 +169,10 @@ export async function createStoreOrderInDb(
   const Model = getSeedModel("orders");
   const now = new Date().toISOString();
   const legacyId = `ord-${Date.now()}`;
-  const subtotal = input.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const subtotal = calcSubtotal(input.items);
   const shippingFee = resolveShippingFee(settings, areaIndex, subtotal);
-  const total = subtotal + shippingFee;
+  const discount = 0;
+  const total = calcTotal(subtotal, shippingFee, discount);
   const count = itemCount(input.items);
   const summary = itemsSummary(input.items);
 
@@ -164,11 +194,15 @@ export async function createStoreOrderInDb(
         ""
       ).trim(),
     },
-    items: input.items,
+    items: input.items.map((item) => ({
+      ...item,
+      discount: Math.max(0, Number(item.discount ?? 0)),
+    })),
     itemCount: count,
     itemsSummary: summary,
     subtotal,
     shippingFee,
+    discount,
     total,
     currency: "BDT" as const,
     paymentMethod: "cod" as const,
@@ -278,6 +312,7 @@ function mapLegacyAdminOrderToStoreOrder(doc: Record<string, unknown>): StoreOrd
     itemsSummary: String(doc.itemsSummary ?? ""),
     subtotal: Number(doc.subtotal ?? total),
     shippingFee: Number(doc.shippingFee ?? 0),
+    discount: Math.max(0, Number(doc.discount ?? 0)),
     total,
     currency: "BDT",
     paymentMethod: "cod",
@@ -313,6 +348,9 @@ export type UpdateAdminOrderInput = {
     note: string;
     deliveryArea?: string;
   };
+  items: StoreOrder["items"];
+  shippingFee: number;
+  discount: number;
 };
 
 export async function getAdminOrderById(id: string): Promise<StoreOrder | null> {
@@ -370,6 +408,29 @@ export async function updateAdminOrderInDb(
   if (!customer.name || !customer.phone) {
     throw new Error("Name and phone are required");
   }
+  if (!input.items.length) {
+    throw new Error("Add at least one product");
+  }
+
+  const items = input.items.map((item) => ({
+    productId: item.productId,
+    slug: item.slug,
+    name: item.name.trim(),
+    price: Math.max(0, Number(item.price) || 0),
+    compareAtPrice: item.compareAtPrice ?? null,
+    discount: Math.max(0, Number(item.discount) || 0),
+    currency: item.currency === "USD" ? ("USD" as const) : ("BDT" as const),
+    quantity: Math.max(1, Math.floor(Number(item.quantity) || 1)),
+    size: (item.size || "M") as StoreOrder["items"][number]["size"],
+    color: item.color || "Default",
+    image: item.image || "",
+  }));
+  const subtotal = calcSubtotal(items);
+  const shippingFee = Math.max(0, Number(input.shippingFee) || 0);
+  const discount = Math.max(0, Number(input.discount) || 0);
+  const total = calcTotal(subtotal, shippingFee, discount);
+  const count = itemCount(items);
+  const summary = itemsSummary(items);
 
   if (!input.items.length) {
     throw new Error("Add at least one product");
@@ -410,12 +471,21 @@ export async function updateAdminOrderInDb(
         status: input.status,
         customer,
         items,
+<<<<<<< HEAD
         subtotal,
         shippingFee,
         discount: orderDiscount,
         total,
         itemCount,
         itemsSummary,
+=======
+        itemCount: count,
+        itemsSummary: summary,
+        subtotal,
+        shippingFee,
+        discount,
+        total,
+>>>>>>> cf78953116bac3a4109b3e0c1d7b2f731d0144d0
         updatedAt: now,
       },
     },
@@ -439,6 +509,14 @@ export async function updateAdminOrderInDb(
         customerRegion: customer.region,
         customerCity: customer.city,
         note: customer.note,
+        deliveryArea: customer.deliveryArea,
+        items,
+        itemCount: count,
+        itemsSummary: summary,
+        subtotal,
+        shippingFee,
+        discount,
+        total,
         updatedAt: now,
       },
     },

@@ -225,6 +225,12 @@ export function AdminOrderDetailDialog({
                     : "Free"
                 }
               />
+              {(order.discount ?? 0) > 0 ? (
+                <Row
+                  label="Discount"
+                  value={`−${formatCurrency(order.discount, order.currency)}`}
+                />
+              ) : null}
               <Row
                 label="Total"
                 value={formatCurrency(order.total, order.currency)}

@@ -15,7 +15,7 @@ import {
 } from "@mui/material";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { CartItemRow } from "@/components/cart/CartItemRow";
 import { CartOrderSummary } from "@/components/cart/CartOrderSummary";
@@ -94,6 +94,23 @@ export function CheckoutPageView() {
 
   const deliveryEstimate = shippingEstimateForArea(settings, areaIndex);
   const isEmpty = cart.items.length === 0;
+  const checkoutTracked = useRef(false);
+
+  useEffect(() => {
+    if (isEmpty || checkoutTracked.current) return;
+    checkoutTracked.current = true;
+    void import("@/lib/pixel/track").then(({ trackPixelEvent, cartContentsFromItems }) => {
+      const contents = cartContentsFromItems(cart.items);
+      void trackPixelEvent({
+        eventName: "InitiateCheckout",
+        value: cart.subtotal,
+        currency: cart.currency,
+        contentIds: cart.items.map((item) => item.productId),
+        contents,
+        numItems: cart.items.reduce((sum, item) => sum + item.quantity, 0),
+      });
+    });
+  }, [isEmpty, cart.items, cart.subtotal, cart.currency]);
 
   async function onSubmit(values: CheckoutFormValues) {
     setSubmitError(null);
@@ -101,6 +118,13 @@ export function CheckoutPageView() {
       settings.shippingAreas.find((area) => area.id === values.deliveryAreaId) ??
       settings.shippingAreas[0];
     try {
+      const { createEventId, getBrowserIds } = await import("@/lib/pixel/browser");
+      const { trackPixelEvent, cartContentsFromItems } = await import("@/lib/pixel/track");
+
+      const purchaseEventId = createEventId();
+      const browser = getBrowserIds();
+      const contents = cartContentsFromItems(cart.items);
+
       const order = await placeStoreOrder({
         customer: {
           name: values.name,
@@ -115,7 +139,37 @@ export function CheckoutPageView() {
         items: cart.items,
         shippingFee,
         deliveryAreaId: selectedArea?.id ?? values.deliveryAreaId,
+        tracking: {
+          eventId: purchaseEventId,
+          fbp: browser.fbp,
+          fbc: browser.fbc,
+          ttp: browser.ttp,
+          ttclid: browser.ttclid,
+          eventSourceUrl: typeof window !== "undefined" ? window.location.href : undefined,
+          clientUserAgent: browser.clientUserAgent,
+        },
       });
+
+      const eventId = order.purchaseEventId || purchaseEventId;
+      await trackPixelEvent({
+        eventName: "Purchase",
+        eventId,
+        skipServer: true,
+        value: order.total,
+        currency: order.currency,
+        contentIds: order.items.map((item) => item.productId),
+        contents,
+        numItems: order.itemCount,
+        orderId: order.orderNumber,
+        user: {
+          email: values.email,
+          phone: values.phone,
+          firstName: values.name.trim().split(/\s+/)[0],
+          city: values.city,
+          state: values.region,
+        },
+      });
+
       clearCart();
       const successParams = new URLSearchParams({
         order: order.orderNumber,

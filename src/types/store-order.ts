@@ -13,7 +13,10 @@ export type StoreOrderCustomer = {
   deliveryArea: string;
 };
 
-export type StoreOrderItem = CartItem;
+export type StoreOrderItem = CartItem & {
+  /** Per-line discount amount (BDT), applied after price × qty. */
+  discount?: number;
+};
 
 export type StoreOrder = {
   id: string;
@@ -25,8 +28,13 @@ export type StoreOrder = {
   itemsSummary: string;
   subtotal: number;
   shippingFee: number;
+<<<<<<< HEAD
   /** Order-level discount subtracted from subtotal + shipping. */
   orderDiscount?: number;
+=======
+  /** Order-level discount amount (BDT). */
+  discount: number;
+>>>>>>> cf78953116bac3a4109b3e0c1d7b2f731d0144d0
   total: number;
   currency: "BDT";
   paymentMethod: "cod";
@@ -42,4 +50,13 @@ export type CreateStoreOrderInput = {
   items: StoreOrderItem[];
   shippingFee: number;
   deliveryAreaId?: string;
+  tracking?: {
+    eventId?: string;
+    fbp?: string;
+    fbc?: string;
+    ttp?: string;
+    ttclid?: string;
+    eventSourceUrl?: string;
+    clientUserAgent?: string;
+  };
 };

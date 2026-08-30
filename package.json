@@ -3,13 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "seed": "tsx scripts/seed-dummy-data.ts",
+<<<<<<< HEAD
     "migrate-db": "tsx scripts/migrate-mongodb.ts",
     "migrate-orders": "tsx scripts/migrate-orders-from-hiddenhub.ts"
+=======
+    "seed:admin": "tsx scripts/seed-admin.ts"
+>>>>>>> cf78953116bac3a4109b3e0c1d7b2f731d0144d0
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

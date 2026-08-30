@@ -6,6 +6,7 @@ import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import LocalShippingOutlinedIcon from "@mui/icons-material/LocalShippingOutlined";
 import PhoneOutlinedIcon from "@mui/icons-material/PhoneOutlined";
+import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import SellOutlinedIcon from "@mui/icons-material/SellOutlined";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
@@ -14,6 +15,7 @@ import {
   Button,
   Checkbox,
   Chip,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -36,15 +38,26 @@ import {
   Stack,
 } from "@mui/material";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AdminOrderDetailDialog } from "@/components/admin/orders/AdminOrderDetailDialog";
 import { AdminOrderEditDialog } from "@/components/admin/orders/AdminOrderEditDialog";
 import { AdminOrderMobileCard } from "@/components/admin/orders/AdminOrderMobileCard";
 import { SteadfastConsignmentBadge } from "@/components/admin/orders/SteadfastConsignmentBadge";
 import { useToast } from "@/context/toast/ToastProvider";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { ADMIN_ACCENT } from "@/lib/constants/admin";
+import { printOrderInvoice } from "@/lib/orders/print-invoice";
+import { printOrderSticker } from "@/lib/orders/print-sticker";
 import { queryKeys } from "@/lib/queries/query-keys";
+<<<<<<< HEAD
 import { deleteAdminOrder, sendOrderToSteadfast } from "@/services/admin-order-mutations";
+=======
+import {
+  deleteAdminOrder,
+  fetchAdminOrderDetail,
+} from "@/services/admin-order-mutations";
+>>>>>>> cf78953116bac3a4109b3e0c1d7b2f731d0144d0
 import {
   ADMIN_ORDER_STATUS_FILTERS,
   ADMIN_ORDER_STATUS_LABELS,
@@ -106,8 +119,13 @@ function phoneToTel(phone: string) {
   return `tel:+${digits.startsWith("880") ? digits : `88${digits.replace(/^0/, "")}`}`;
 }
 
+<<<<<<< HEAD
 function orderSentToSteadfast(order: AdminOrder) {
   return order.steadfastConsignmentId != null && order.steadfastConsignmentId !== "";
+=======
+function normalizePhone(phone: string) {
+  return phone.replace(/\D/g, "").replace(/^880/, "0");
+>>>>>>> cf78953116bac3a4109b3e0c1d7b2f731d0144d0
 }
 
 function matchesDateRange(createdAt: string, range: DateRange) {
@@ -140,6 +158,7 @@ type AdminOrdersViewProps = {
 
 export function AdminOrdersView({ orders }: AdminOrdersViewProps) {
   const queryClient = useQueryClient();
+  const settings = useSiteSettings();
   const { showToast } = useToast();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | AdminOrderStatus>("all");
@@ -149,7 +168,19 @@ export function AdminOrdersView({ orders }: AdminOrdersViewProps) {
   const [viewOrderId, setViewOrderId] = useState<string | null>(null);
   const [editOrderId, setEditOrderId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AdminOrder | null>(null);
+<<<<<<< HEAD
   const [sendingOrderId, setSendingOrderId] = useState<string | null>(null);
+=======
+  const [printBusyId, setPrintBusyId] = useState<string | null>(null);
+  const [refetching, setRefetching] = useState(false);
+
+  const shopInfo = {
+    shopName: settings.shopName || settings.businessName || "Hidden Urban",
+    contactEmail: settings.contactEmail,
+    contactPhone: settings.contactPhone,
+    contactAddress: settings.contactAddress,
+  };
+>>>>>>> cf78953116bac3a4109b3e0c1d7b2f731d0144d0
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteAdminOrder(id),
@@ -220,6 +251,20 @@ export function AdminOrdersView({ orders }: AdminOrdersViewProps) {
     });
   }, [orders, search, statusFilter, dateRange]);
 
+  const repeatPhones = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const order of orders) {
+      const phone = normalizePhone(order.customerPhone);
+      if (!phone) continue;
+      counts.set(phone, (counts.get(phone) ?? 0) + 1);
+    }
+    const repeats = new Set<string>();
+    for (const [phone, count] of counts) {
+      if (count > 1) repeats.add(phone);
+    }
+    return repeats;
+  }, [orders]);
+
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const pageStart = (currentPage - 1) * PAGE_SIZE;
@@ -252,8 +297,49 @@ export function AdminOrdersView({ orders }: AdminOrdersViewProps) {
   async function copyPhone(phone: string) {
     try {
       await navigator.clipboard.writeText(phone);
+      showToast("Phone copied");
     } catch {
       /* ignore */
+    }
+  }
+
+  async function handleRefetch() {
+    setRefetching(true);
+    try {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.admin.orders() });
+      await queryClient.refetchQueries({ queryKey: queryKeys.admin.orders() });
+      showToast("Orders refreshed");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Could not refresh orders", "error");
+    } finally {
+      setRefetching(false);
+    }
+  }
+
+  async function handlePrintInvoice(orderId: string) {
+    setPrintBusyId(`invoice:${orderId}`);
+    try {
+      const order = await fetchAdminOrderDetail(orderId);
+      printOrderInvoice(order, shopInfo);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Could not print invoice", "error");
+    } finally {
+      setPrintBusyId(null);
+    }
+  }
+
+  async function handlePrintSticker(orderId: string) {
+    setPrintBusyId(`sticker:${orderId}`);
+    try {
+      const order = await fetchAdminOrderDetail(orderId);
+      printOrderSticker(order, {
+        shopName: shopInfo.shopName,
+        contactPhone: shopInfo.contactPhone,
+      });
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Could not print sticker", "error");
+    } finally {
+      setPrintBusyId(null);
     }
   }
 
@@ -296,28 +382,60 @@ export function AdminOrdersView({ orders }: AdminOrdersViewProps) {
           </Typography>
         </Box>
 
-        <Box sx={{ display: "flex", flexDirection: "column", alignItems: { md: "flex-end" } }}>
-          <FormControl size="small" sx={{ minWidth: 160 }}>
-            <InputLabel id="orders-date-range">Filter by date</InputLabel>
-            <Select
-              labelId="orders-date-range"
-              label="Filter by date"
-              value={dateRange}
-              onChange={(e) => {
-                setDateRange(e.target.value as DateRange);
-                setPage(1);
-              }}
-            >
-              {DATE_RANGES.map((r) => (
-                <MenuItem key={r.value} value={r.value}>
-                  {r.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <Typography sx={{ mt: 0.75, fontSize: "0.8rem", color: "text.secondary" }}>
-            {filtered.length} total order{filtered.length === 1 ? "" : "s"}
-          </Typography>
+        <Box
+          sx={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: { md: "flex-end" },
+            justifyContent: { md: "flex-end" },
+            gap: 1.25,
+          }}
+        >
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={
+              refetching ? (
+                <CircularProgress size={14} color="inherit" />
+              ) : (
+                <RefreshRoundedIcon sx={{ fontSize: 18 }} />
+              )
+            }
+            onClick={() => void handleRefetch()}
+            disabled={refetching}
+            sx={{
+              textTransform: "none",
+              fontWeight: 600,
+              borderColor: "rgba(0,0,0,0.12)",
+              color: "text.primary",
+              height: 40,
+            }}
+          >
+            {refetching ? "Refreshing…" : "Refetch"}
+          </Button>
+          <Box sx={{ display: "flex", flexDirection: "column", alignItems: { md: "flex-end" } }}>
+            <FormControl size="small" sx={{ minWidth: 160 }}>
+              <InputLabel id="orders-date-range">Filter by date</InputLabel>
+              <Select
+                labelId="orders-date-range"
+                label="Filter by date"
+                value={dateRange}
+                onChange={(e) => {
+                  setDateRange(e.target.value as DateRange);
+                  setPage(1);
+                }}
+              >
+                {DATE_RANGES.map((r) => (
+                  <MenuItem key={r.value} value={r.value}>
+                    {r.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Typography sx={{ mt: 0.75, fontSize: "0.8rem", color: "text.secondary" }}>
+              {filtered.length} total order{filtered.length === 1 ? "" : "s"}
+            </Typography>
+          </Box>
         </Box>
       </Box>
 
@@ -459,6 +577,8 @@ export function AdminOrdersView({ orders }: AdminOrdersViewProps) {
               ) : (
                 pageOrders.map((order) => {
                   const chip = statusChipSx[order.status];
+                  const invoiceBusy = printBusyId === `invoice:${order.id}`;
+                  const stickerBusy = printBusyId === `sticker:${order.id}`;
                   return (
                     <TableRow key={order.id} hover selected={selected.has(order.id)}>
                       <TableCell padding="checkbox">
@@ -472,9 +592,45 @@ export function AdminOrdersView({ orders }: AdminOrdersViewProps) {
                         #{order.orderNumber}
                       </TableCell>
                       <TableCell sx={{ minWidth: 200 }}>
-                        <Typography sx={{ fontSize: "0.85rem", fontWeight: 600 }}>
-                          {order.customerName}
-                        </Typography>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            flexWrap: "wrap",
+                            alignItems: "center",
+                            gap: 0.75,
+                          }}
+                        >
+                          <Typography sx={{ fontSize: "0.85rem", fontWeight: 600 }}>
+                            {order.customerName}
+                          </Typography>
+                          {repeatPhones.has(normalizePhone(order.customerPhone)) ? (
+                            <Box
+                              component={Link}
+                              href={`/dashboard/admin/reports/repeat-customers?phone=${encodeURIComponent(order.customerPhone)}`}
+                              sx={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                px: 0.9,
+                                py: 0.15,
+                                borderRadius: 999,
+                                border: "1px solid #f87171",
+                                bgcolor: "#fef2f2",
+                                color: "#dc2626",
+                                fontSize: "0.65rem",
+                                fontWeight: 600,
+                                lineHeight: 1.4,
+                                whiteSpace: "nowrap",
+                                textDecoration: "none",
+                                "&:hover": {
+                                  bgcolor: "#fee2e2",
+                                  borderColor: "#ef4444",
+                                },
+                              }}
+                            >
+                              Repeat customer
+                            </Box>
+                          ) : null}
+                        </Box>
                         <Box sx={{ display: "flex", alignItems: "center", gap: 0.25, mt: 0.35 }}>
                           <Typography sx={{ fontSize: "0.8rem", color: "text.secondary" }}>
                             {order.customerPhone}
@@ -483,7 +639,7 @@ export function AdminOrdersView({ orders }: AdminOrdersViewProps) {
                             <IconButton
                               size="small"
                               aria-label="Copy phone"
-                              onClick={() => copyPhone(order.customerPhone)}
+                              onClick={() => void copyPhone(order.customerPhone)}
                             >
                               <ContentCopyRoundedIcon sx={{ fontSize: 15 }} />
                             </IconButton>
@@ -558,17 +714,39 @@ export function AdminOrdersView({ orders }: AdminOrdersViewProps) {
                       </TableCell>
                       <TableCell>
                         <Box sx={{ display: "flex", alignItems: "center", gap: 0.25 }}>
-                          <Tooltip title="Order note">
-                            <IconButton size="small" aria-label="Order note">
-                              <DescriptionOutlinedIcon
-                                sx={{ fontSize: 18, color: ADMIN_ACCENT }}
-                              />
-                            </IconButton>
+                          <Tooltip title="Print invoice">
+                            <span>
+                              <IconButton
+                                size="small"
+                                aria-label="Print invoice"
+                                disabled={Boolean(printBusyId)}
+                                onClick={() => void handlePrintInvoice(order.id)}
+                              >
+                                {invoiceBusy ? (
+                                  <CircularProgress size={16} />
+                                ) : (
+                                  <DescriptionOutlinedIcon
+                                    sx={{ fontSize: 18, color: ADMIN_ACCENT }}
+                                  />
+                                )}
+                              </IconButton>
+                            </span>
                           </Tooltip>
-                          <Tooltip title="Tags">
-                            <IconButton size="small" aria-label="Tags">
-                              <SellOutlinedIcon sx={{ fontSize: 18, color: "#16a34a" }} />
-                            </IconButton>
+                          <Tooltip title="Print sticker">
+                            <span>
+                              <IconButton
+                                size="small"
+                                aria-label="Print sticker"
+                                disabled={Boolean(printBusyId)}
+                                onClick={() => void handlePrintSticker(order.id)}
+                              >
+                                {stickerBusy ? (
+                                  <CircularProgress size={16} />
+                                ) : (
+                                  <SellOutlinedIcon sx={{ fontSize: 18, color: "#16a34a" }} />
+                                )}
+                              </IconButton>
+                            </span>
                           </Tooltip>
                           {orderSentToSteadfast(order) ? (
                             <SteadfastConsignmentBadge

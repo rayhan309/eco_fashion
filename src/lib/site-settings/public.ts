@@ -2,7 +2,13 @@ import { DEFAULT_SITE_SETTINGS } from "@/lib/site-settings/defaults";
 import type { PublicSiteSettings, SiteSettings } from "@/types/site-settings";
 
 export function toPublicSiteSettings(settings: SiteSettings): PublicSiteSettings {
-  const { steadfastApiKey: _a, steadfastSecretKey: _b, ...rest } = settings;
+  const {
+    steadfastApiKey: _a,
+    steadfastSecretKey: _b,
+    metaCapiToken: _c,
+    tiktokCapiToken: _d,
+    ...rest
+  } = settings;
   return normalizePublicSiteSettings(rest);
 }
 
@@ -50,7 +56,13 @@ export function normalizePublicSiteSettings(
 }
 
 function toPublicDefaults(): PublicSiteSettings {
-  const { steadfastApiKey: _a, steadfastSecretKey: _b, ...rest } = DEFAULT_SITE_SETTINGS;
+  const {
+    steadfastApiKey: _a,
+    steadfastSecretKey: _b,
+    metaCapiToken: _c,
+    tiktokCapiToken: _d,
+    ...rest
+  } = DEFAULT_SITE_SETTINGS;
   return {
     ...rest,
     shippingAreas: DEFAULT_SITE_SETTINGS.shippingAreas.map((area) => ({ ...area })),
