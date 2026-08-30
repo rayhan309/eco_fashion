@@ -9,7 +9,6 @@ import RemoveRoundedIcon from "@mui/icons-material/RemoveRounded";
 import SecurityOutlinedIcon from "@mui/icons-material/SecurityOutlined";
 import ShareOutlinedIcon from "@mui/icons-material/ShareOutlined";
 import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
-import StarRoundedIcon from "@mui/icons-material/StarRounded";
 import VerifiedOutlinedIcon from "@mui/icons-material/VerifiedOutlined";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import Image from "next/image";
@@ -17,6 +16,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CollectionProductCard } from "@/components/product/CollectionProductCard";
+import { StarIcon } from "@/components/ui/StarIcon";
 import { useCart } from "@/hooks/useCart";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useWishlist } from "@/hooks/useWishlist";
@@ -322,7 +322,7 @@ export function ProductDetailView({ product, relatedProducts }: ProductDetailVie
             ) : null}
             {product.ratings.count > 0 ? (
               <span className="ml-auto flex items-center gap-1 text-sm text-[#61716a]">
-                <StarRoundedIcon sx={{ fontSize: 18, color: "#d97706" }} />
+                <StarIcon size={18} color="#d97706" />
                 {product.ratings.average.toFixed(1)}
                 <span className="text-[#9aa8a1]">({product.ratings.count})</span>
               </span>

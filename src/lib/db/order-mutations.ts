@@ -86,17 +86,10 @@ export function mapStoreOrderDoc(doc: Record<string, unknown>): StoreOrder {
         name: String(item.name ?? ""),
         price: Number(item.price ?? 0),
         compareAtPrice:
-<<<<<<< HEAD
-          item.compareAtPrice != null && item.compareAtPrice !== ""
-            ? Number(item.compareAtPrice)
-            : null,
-        discount: Number(item.discount ?? 0),
-=======
           compareAt === null || compareAt === undefined || compareAt === ""
             ? null
             : Number(compareAt),
         discount: Math.max(0, Number(item.discount ?? 0)),
->>>>>>> cf78953116bac3a4109b3e0c1d7b2f731d0144d0
         currency: item.currency === "USD" ? "USD" : "BDT",
         quantity: Number(item.quantity ?? 1),
         size: (String(item.size ?? "M") as StoreOrder["items"][number]["size"]),
@@ -108,11 +101,7 @@ export function mapStoreOrderDoc(doc: Record<string, unknown>): StoreOrder {
     itemsSummary: String(doc.itemsSummary ?? ""),
     subtotal: Number(doc.subtotal ?? 0),
     shippingFee: Number(doc.shippingFee ?? 0),
-<<<<<<< HEAD
-    orderDiscount: Number(doc.discount ?? doc.orderDiscount ?? 0),
-=======
     discount: Math.max(0, Number(doc.discount ?? 0)),
->>>>>>> cf78953116bac3a4109b3e0c1d7b2f731d0144d0
     total: Number(doc.total ?? 0),
     currency: "BDT",
     paymentMethod: "cod",
@@ -324,20 +313,9 @@ function mapLegacyAdminOrderToStoreOrder(doc: Record<string, unknown>): StoreOrd
 export type UpdateAdminOrderInput = {
   status: AdminOrderStatus;
   deliveryAreaId?: string;
-  items: Array<{
-    productId: string;
-    slug: string;
-    name: string;
-    price: number;
-    discount: number;
-    quantity: number;
-    size: string;
-    color: string;
-    image: string;
-    compareAtPrice?: number | null;
-  }>;
+  items: StoreOrder["items"];
   shippingFee: number;
-  orderDiscount: number;
+  discount: number;
   customer: {
     name: string;
     phone: string;
@@ -348,9 +326,6 @@ export type UpdateAdminOrderInput = {
     note: string;
     deliveryArea?: string;
   };
-  items: StoreOrder["items"];
-  shippingFee: number;
-  discount: number;
 };
 
 export async function getAdminOrderById(id: string): Promise<StoreOrder | null> {
@@ -432,37 +407,6 @@ export async function updateAdminOrderInDb(
   const count = itemCount(items);
   const summary = itemsSummary(items);
 
-  if (!input.items.length) {
-    throw new Error("Add at least one product");
-  }
-
-  const items = input.items.map((item) => ({
-    productId: item.productId,
-    slug: item.slug,
-    name: item.name.trim(),
-    price: Math.max(0, item.price),
-    discount: Math.max(0, item.discount),
-    quantity: Math.max(1, item.quantity),
-    size: item.size || "M",
-    color: item.color || "Default",
-    image: item.image,
-    compareAtPrice: item.compareAtPrice ?? null,
-    currency: "BDT" as const,
-  }));
-
-  const subtotal = items.reduce(
-    (sum, item) => sum + Math.max(0, (item.price - item.discount) * item.quantity),
-    0,
-  );
-  const shippingFee = Math.max(0, input.shippingFee);
-  const orderDiscount = Math.max(0, input.orderDiscount);
-  const total = Math.max(0, subtotal + shippingFee - orderDiscount);
-  const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
-  const itemsSummary = items
-    .map((item) => item.name)
-    .slice(0, 3)
-    .join(", ");
-
   const Orders = getSeedModel("orders");
   const storeUpdated = await Orders.findOneAndUpdate(
     { legacyId: normalized },
@@ -471,21 +415,12 @@ export async function updateAdminOrderInDb(
         status: input.status,
         customer,
         items,
-<<<<<<< HEAD
-        subtotal,
-        shippingFee,
-        discount: orderDiscount,
-        total,
-        itemCount,
-        itemsSummary,
-=======
-        itemCount: count,
-        itemsSummary: summary,
         subtotal,
         shippingFee,
         discount,
         total,
->>>>>>> cf78953116bac3a4109b3e0c1d7b2f731d0144d0
+        itemCount: count,
+        itemsSummary: summary,
         updatedAt: now,
       },
     },

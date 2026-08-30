@@ -28,13 +28,8 @@ export type StoreOrder = {
   itemsSummary: string;
   subtotal: number;
   shippingFee: number;
-<<<<<<< HEAD
-  /** Order-level discount subtracted from subtotal + shipping. */
-  orderDiscount?: number;
-=======
   /** Order-level discount amount (BDT). */
   discount: number;
->>>>>>> cf78953116bac3a4109b3e0c1d7b2f731d0144d0
   total: number;
   currency: "BDT";
   paymentMethod: "cod";

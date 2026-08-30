@@ -1,11 +1,11 @@
 "use client";
 
-import StarRoundedIcon from "@mui/icons-material/StarRounded";
 import Image from "next/image";
 import { useState } from "react";
 import type { Swiper as SwiperType } from "swiper";
 import { Autoplay } from "swiper/modules";
 import { Swiper, SwiperSlide } from "swiper/react";
+import { StarRating } from "@/components/ui/StarIcon";
 import type { ClientReview } from "@/types/review";
 import "swiper/css";
 
@@ -16,19 +16,7 @@ type ClientReviewsSectionProps = {
 const COMMENT_PREVIEW_LENGTH = 110;
 
 function Stars({ rating }: { rating: number }) {
-  return (
-    <div className="flex items-center gap-0.5" aria-label={`${rating} out of 5 stars`}>
-      {Array.from({ length: 5 }).map((_, index) => (
-        <StarRoundedIcon
-          key={index}
-          sx={{
-            fontSize: 18,
-            color: index < rating ? "#e6a34a" : "rgba(32,49,45,0.18)",
-          }}
-        />
-      ))}
-    </div>
-  );
+  return <StarRating rating={rating} />;
 }
 
 function ReviewCard({ review }: { review: ClientReview }) {

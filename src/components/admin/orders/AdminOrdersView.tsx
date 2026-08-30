@@ -50,14 +50,11 @@ import { ADMIN_ACCENT } from "@/lib/constants/admin";
 import { printOrderInvoice } from "@/lib/orders/print-invoice";
 import { printOrderSticker } from "@/lib/orders/print-sticker";
 import { queryKeys } from "@/lib/queries/query-keys";
-<<<<<<< HEAD
-import { deleteAdminOrder, sendOrderToSteadfast } from "@/services/admin-order-mutations";
-=======
 import {
   deleteAdminOrder,
   fetchAdminOrderDetail,
+  sendOrderToSteadfast,
 } from "@/services/admin-order-mutations";
->>>>>>> cf78953116bac3a4109b3e0c1d7b2f731d0144d0
 import {
   ADMIN_ORDER_STATUS_FILTERS,
   ADMIN_ORDER_STATUS_LABELS,
@@ -119,13 +116,12 @@ function phoneToTel(phone: string) {
   return `tel:+${digits.startsWith("880") ? digits : `88${digits.replace(/^0/, "")}`}`;
 }
 
-<<<<<<< HEAD
-function orderSentToSteadfast(order: AdminOrder) {
-  return order.steadfastConsignmentId != null && order.steadfastConsignmentId !== "";
-=======
 function normalizePhone(phone: string) {
   return phone.replace(/\D/g, "").replace(/^880/, "0");
->>>>>>> cf78953116bac3a4109b3e0c1d7b2f731d0144d0
+}
+
+function orderSentToSteadfast(order: AdminOrder) {
+  return order.steadfastConsignmentId != null && order.steadfastConsignmentId !== "";
 }
 
 function matchesDateRange(createdAt: string, range: DateRange) {
@@ -168,9 +164,7 @@ export function AdminOrdersView({ orders }: AdminOrdersViewProps) {
   const [viewOrderId, setViewOrderId] = useState<string | null>(null);
   const [editOrderId, setEditOrderId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AdminOrder | null>(null);
-<<<<<<< HEAD
   const [sendingOrderId, setSendingOrderId] = useState<string | null>(null);
-=======
   const [printBusyId, setPrintBusyId] = useState<string | null>(null);
   const [refetching, setRefetching] = useState(false);
 
@@ -180,7 +174,6 @@ export function AdminOrdersView({ orders }: AdminOrdersViewProps) {
     contactPhone: settings.contactPhone,
     contactAddress: settings.contactAddress,
   };
->>>>>>> cf78953116bac3a4109b3e0c1d7b2f731d0144d0
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteAdminOrder(id),
