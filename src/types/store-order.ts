@@ -25,11 +25,16 @@ export type StoreOrder = {
   itemsSummary: string;
   subtotal: number;
   shippingFee: number;
+  /** Order-level discount subtracted from subtotal + shipping. */
+  orderDiscount?: number;
   total: number;
   currency: "BDT";
   paymentMethod: "cod";
   createdAt: string;
   updatedAt: string;
+  steadfastConsignmentId?: string | number | null;
+  steadfastTrackingCode?: string;
+  steadfastSentAt?: string;
 };
 
 export type CreateStoreOrderInput = {

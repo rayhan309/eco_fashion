@@ -1,5 +1,6 @@
 "use client";
 
+import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
 import {
   Box,
   Button,
@@ -13,6 +14,8 @@ import {
   Typography,
 } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { AdminOrderHistoryDialog } from "@/components/admin/orders/AdminOrderHistoryDialog";
 import { ADMIN_ACCENT } from "@/lib/constants/admin";
 import { formatCurrency } from "@/lib/formatters/currency";
 import { queryKeys } from "@/lib/queries/query-keys";
@@ -61,6 +64,7 @@ export function AdminOrderDetailDialog({
   onEdit,
 }: AdminOrderDetailDialogProps) {
   const open = Boolean(orderId);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const { data: order, isPending, isError, error } = useQuery({
     queryKey: queryKeys.admin.order(orderId ?? ""),
     queryFn: () => fetchAdminOrderDetail(orderId!),
@@ -233,20 +237,35 @@ export function AdminOrderDetailDialog({
           </Box>
         )}
       </DialogContent>
-      <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={onClose} sx={{ textTransform: "none" }}>
-          Close
+      <DialogActions sx={{ px: 3, py: 2, justifyContent: "space-between" }}>
+        <Button
+          startIcon={<HistoryOutlinedIcon />}
+          onClick={() => setHistoryOpen(true)}
+          disabled={!order}
+          sx={{ textTransform: "none" }}
+        >
+          Check histories
         </Button>
-        {order ? (
-          <Button
-            variant="contained"
-            onClick={(): void => onEdit(order.id)}
-            sx={{ textTransform: "none", bgcolor: ADMIN_ACCENT }}
-          >
-            Edit order
+        <Box sx={{ display: "flex", gap: 1 }}>
+          <Button onClick={onClose} sx={{ textTransform: "none" }}>
+            Close
           </Button>
-        ) : null}
+          {order ? (
+            <Button
+              variant="contained"
+              onClick={(): void => onEdit(order.id)}
+              sx={{ textTransform: "none", bgcolor: ADMIN_ACCENT }}
+            >
+              Edit order
+            </Button>
+          ) : null}
+        </Box>
       </DialogActions>
+
+      <AdminOrderHistoryDialog
+        orderId={historyOpen ? orderId : null}
+        onClose={() => setHistoryOpen(false)}
+      />
     </Dialog>
   );
 }

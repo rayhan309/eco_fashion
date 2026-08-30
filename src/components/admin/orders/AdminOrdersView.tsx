@@ -33,15 +33,18 @@ import {
   TextField,
   Tooltip,
   Typography,
+  Stack,
 } from "@mui/material";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { AdminOrderDetailDialog } from "@/components/admin/orders/AdminOrderDetailDialog";
 import { AdminOrderEditDialog } from "@/components/admin/orders/AdminOrderEditDialog";
+import { AdminOrderMobileCard } from "@/components/admin/orders/AdminOrderMobileCard";
+import { SteadfastConsignmentBadge } from "@/components/admin/orders/SteadfastConsignmentBadge";
 import { useToast } from "@/context/toast/ToastProvider";
 import { ADMIN_ACCENT } from "@/lib/constants/admin";
 import { queryKeys } from "@/lib/queries/query-keys";
-import { deleteAdminOrder } from "@/services/admin-order-mutations";
+import { deleteAdminOrder, sendOrderToSteadfast } from "@/services/admin-order-mutations";
 import {
   ADMIN_ORDER_STATUS_FILTERS,
   ADMIN_ORDER_STATUS_LABELS,
@@ -103,6 +106,10 @@ function phoneToTel(phone: string) {
   return `tel:+${digits.startsWith("880") ? digits : `88${digits.replace(/^0/, "")}`}`;
 }
 
+function orderSentToSteadfast(order: AdminOrder) {
+  return order.steadfastConsignmentId != null && order.steadfastConsignmentId !== "";
+}
+
 function matchesDateRange(createdAt: string, range: DateRange) {
   if (range === "lifetime") return true;
   const date = new Date(createdAt);
@@ -142,6 +149,7 @@ export function AdminOrdersView({ orders }: AdminOrdersViewProps) {
   const [viewOrderId, setViewOrderId] = useState<string | null>(null);
   const [editOrderId, setEditOrderId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AdminOrder | null>(null);
+  const [sendingOrderId, setSendingOrderId] = useState<string | null>(null);
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteAdminOrder(id),
@@ -160,6 +168,41 @@ export function AdminOrdersView({ orders }: AdminOrdersViewProps) {
     },
     onError: (error) => {
       showToast(error instanceof Error ? error.message : "Failed to delete order", "error");
+    },
+  });
+
+  const steadfastMutation = useMutation({
+    mutationFn: (id: string) => sendOrderToSteadfast(id),
+    onMutate: (id) => {
+      setSendingOrderId(id);
+    },
+    onSuccess: async (result) => {
+      queryClient.setQueryData<AdminOrder[]>(queryKeys.admin.orders(), (current) =>
+        current?.map((entry) =>
+          entry.id === result.order.id
+            ? {
+                ...entry,
+                status: result.order.status,
+                steadfastConsignmentId: result.consignmentId,
+              }
+            : entry,
+        ),
+      );
+      showToast(
+        result.trackingCode
+          ? `Sent to Steadfast (${result.trackingCode})`
+          : "Sent to Steadfast",
+      );
+      await queryClient.invalidateQueries({ queryKey: queryKeys.admin.orders() });
+    },
+    onError: (error) => {
+      showToast(
+        error instanceof Error ? error.message : "Failed to send to courier",
+        "error",
+      );
+    },
+    onSettled: () => {
+      setSendingOrderId(null);
     },
   });
 
@@ -336,7 +379,42 @@ export function AdminOrdersView({ orders }: AdminOrdersViewProps) {
           </Box>
         </Box>
 
-        <TableContainer sx={{ width: "100%", overflowX: "auto" }}>
+        <Stack
+          spacing={1.5}
+          sx={{
+            display: { xs: "flex", md: "none" },
+            p: 1.5,
+            bgcolor: "#f8fafc",
+          }}
+        >
+          {pageOrders.length === 0 ? (
+            <Box sx={{ py: 5, textAlign: "center" }}>
+              <Typography color="text.secondary">No orders match your filters.</Typography>
+            </Box>
+          ) : (
+            pageOrders.map((order) => (
+              <AdminOrderMobileCard
+                key={order.id}
+                order={order}
+                selected={selected.has(order.id)}
+                sending={sendingOrderId === order.id}
+                onToggleSelect={() => toggleRow(order.id)}
+                onCopyPhone={copyPhone}
+                onView={() => setViewOrderId(order.id)}
+                onEdit={() => setEditOrderId(order.id)}
+                onDelete={() => setDeleteTarget(order)}
+                onSendToCourier={() => steadfastMutation.mutate(order.id)}
+                onCopyConsignment={() => showToast("Consignment ID copied")}
+                formatBdt={formatBdt}
+                formatOrderDate={formatOrderDate}
+                phoneToTel={phoneToTel}
+                phoneToWhatsApp={phoneToWhatsApp}
+              />
+            ))
+          )}
+        </Stack>
+
+        <TableContainer sx={{ width: "100%", overflowX: "auto", display: { xs: "none", md: "block" } }}>
           <Table size="small" sx={{ width: "100%", minWidth: 1100 }}>
             <TableHead>
               <TableRow>
@@ -492,25 +570,45 @@ export function AdminOrdersView({ orders }: AdminOrdersViewProps) {
                               <SellOutlinedIcon sx={{ fontSize: 18, color: "#16a34a" }} />
                             </IconButton>
                           </Tooltip>
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            startIcon={<LocalShippingOutlinedIcon sx={{ fontSize: 16 }} />}
-                            sx={{
-                              ml: 0.5,
-                              mr: 0.5,
-                              py: 0.35,
-                              fontSize: "0.7rem",
-                              fontWeight: 600,
-                              textTransform: "none",
-                              borderColor: "rgba(0,0,0,0.12)",
-                              color: "text.primary",
-                              whiteSpace: "nowrap",
-                              display: { xs: "none", lg: "inline-flex" },
-                            }}
-                          >
-                            Send to courier
-                          </Button>
+                          {orderSentToSteadfast(order) ? (
+                            <SteadfastConsignmentBadge
+                              consignmentId={order.steadfastConsignmentId!}
+                              onCopied={() => showToast("Consignment ID copied")}
+                            />
+                          ) : (
+                            <Tooltip title="Send to Steadfast courier">
+                              <span>
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  disabled={
+                                    sendingOrderId === order.id ||
+                                    steadfastMutation.isPending
+                                  }
+                                  onClick={() => steadfastMutation.mutate(order.id)}
+                                  startIcon={
+                                    <LocalShippingOutlinedIcon sx={{ fontSize: 16 }} />
+                                  }
+                                  sx={{
+                                    ml: 0.5,
+                                    mr: 0.5,
+                                    py: 0.35,
+                                    fontSize: "0.7rem",
+                                    fontWeight: 600,
+                                    textTransform: "none",
+                                    borderColor: "rgba(0,0,0,0.12)",
+                                    color: "text.primary",
+                                    whiteSpace: "nowrap",
+                                    display: { xs: "none", lg: "inline-flex" },
+                                  }}
+                                >
+                                  {sendingOrderId === order.id
+                                    ? "Sending..."
+                                    : "Send to courier"}
+                                </Button>
+                              </span>
+                            </Tooltip>
+                          )}
                           <Tooltip title="View">
                             <IconButton
                               size="small"

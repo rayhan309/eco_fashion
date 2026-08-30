@@ -7,6 +7,8 @@ export type CartItem = {
   price: number;
   /** Original price before discount; null/undefined if no compare-at. */
   compareAtPrice?: number | null;
+  /** Per-unit discount amount in order currency. */
+  discount?: number;
   currency: Product["pricing"]["currency"];
   quantity: number;
   size: ProductSize;

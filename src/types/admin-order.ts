@@ -21,6 +21,7 @@ export type AdminOrder = {
   currency: "BDT";
   status: AdminOrderStatus;
   createdAt: string;
+  steadfastConsignmentId?: string | number | null;
 };
 
 export const ADMIN_ORDER_STATUS_LABELS: Record<AdminOrderStatus, string> = {

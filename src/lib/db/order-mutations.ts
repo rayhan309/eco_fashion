@@ -2,11 +2,27 @@ import { dbConnect } from "@/lib/dbConnect";
 import { getSiteSettingsFromDbOrFallback } from "@/lib/db/readers/site-settings";
 import { getSeedModel } from "@/lib/seed/seed-model";
 import {
+  assertSteadfastReady,
+  resolveSteadfastConfig,
+} from "@/lib/steadfast/config";
+import {
+  buildSteadfastAddress,
+  normalizeSteadfastPhone,
+  sanitizeSteadfastInvoice,
+  steadfastCreateOrder,
+  steadfastFraudCheck,
+} from "@/lib/steadfast/client";
+import {
   findShippingAreaIndex,
   resolveShippingFee,
 } from "@/lib/shipping/calculate";
 import type { AdminOrder, AdminOrderStatus } from "@/types/admin-order";
-import { ADMIN_ORDER_STATUSES } from "@/types/admin-order";
+import { ADMIN_ORDER_STATUS_LABELS, ADMIN_ORDER_STATUSES } from "@/types/admin-order";
+import type {
+  CourierStats,
+  OrderHistoryResponse,
+  SiteOrderHistoryItem,
+} from "@/types/order-history";
 import type { CreateStoreOrderInput, StoreOrder } from "@/types/store-order";
 
 function itemsSummary(items: CreateStoreOrderInput["items"]): string {
@@ -36,7 +52,7 @@ export function mapStoreOrderDoc(doc: Record<string, unknown>): StoreOrder {
       : "new_order",
     customer: {
       name: String(customer.name ?? ""),
-      phone: String(customer.phone ?? ""),
+      phone: String(customer.phone ?? doc.customerPhone ?? ""),
       email: String(customer.email ?? ""),
       address: String(customer.address ?? ""),
       region: String(customer.region ?? ""),
@@ -51,6 +67,11 @@ export function mapStoreOrderDoc(doc: Record<string, unknown>): StoreOrder {
         slug: String(item.slug ?? ""),
         name: String(item.name ?? ""),
         price: Number(item.price ?? 0),
+        compareAtPrice:
+          item.compareAtPrice != null && item.compareAtPrice !== ""
+            ? Number(item.compareAtPrice)
+            : null,
+        discount: Number(item.discount ?? 0),
         currency: item.currency === "USD" ? "USD" : "BDT",
         quantity: Number(item.quantity ?? 1),
         size: (String(item.size ?? "M") as StoreOrder["items"][number]["size"]),
@@ -62,11 +83,20 @@ export function mapStoreOrderDoc(doc: Record<string, unknown>): StoreOrder {
     itemsSummary: String(doc.itemsSummary ?? ""),
     subtotal: Number(doc.subtotal ?? 0),
     shippingFee: Number(doc.shippingFee ?? 0),
+    orderDiscount: Number(doc.discount ?? doc.orderDiscount ?? 0),
     total: Number(doc.total ?? 0),
     currency: "BDT",
     paymentMethod: "cod",
     createdAt: String(doc.createdAt ?? new Date().toISOString()),
     updatedAt: String(doc.updatedAt ?? new Date().toISOString()),
+    steadfastConsignmentId: (() => {
+      const value = doc.steadfastConsignmentId;
+      if (value == null || value === "") return null;
+      if (typeof value === "string" || typeof value === "number") return value;
+      return String(value);
+    })(),
+    steadfastTrackingCode: String(doc.steadfastTrackingCode ?? ""),
+    steadfastSentAt: doc.steadfastSentAt ? String(doc.steadfastSentAt) : undefined,
   };
 }
 
@@ -82,6 +112,7 @@ export function toAdminOrder(order: StoreOrder): AdminOrder {
     currency: "BDT",
     status: order.status,
     createdAt: order.createdAt,
+    steadfastConsignmentId: order.steadfastConsignmentId ?? null,
   };
 }
 
@@ -257,6 +288,21 @@ function mapLegacyAdminOrderToStoreOrder(doc: Record<string, unknown>): StoreOrd
 
 export type UpdateAdminOrderInput = {
   status: AdminOrderStatus;
+  deliveryAreaId?: string;
+  items: Array<{
+    productId: string;
+    slug: string;
+    name: string;
+    price: number;
+    discount: number;
+    quantity: number;
+    size: string;
+    color: string;
+    image: string;
+    compareAtPrice?: number | null;
+  }>;
+  shippingFee: number;
+  orderDiscount: number;
   customer: {
     name: string;
     phone: string;
@@ -300,6 +346,11 @@ export async function updateAdminOrderInDb(
   await dbConnect();
   const now = new Date().toISOString();
   const existing = await getAdminOrderById(normalized);
+  const settings = await getSiteSettingsFromDbOrFallback();
+  const matchedArea = input.deliveryAreaId
+    ? settings.shippingAreas.find((area) => area.id === input.deliveryAreaId)
+    : undefined;
+
   const customer = {
     name: input.customer.name.trim(),
     phone: input.customer.phone.trim(),
@@ -309,6 +360,7 @@ export async function updateAdminOrderInDb(
     city: input.customer.city.trim(),
     note: input.customer.note.trim(),
     deliveryArea: (
+      matchedArea?.name ??
       input.customer.deliveryArea ??
       existing?.customer.deliveryArea ??
       ""
@@ -319,6 +371,37 @@ export async function updateAdminOrderInDb(
     throw new Error("Name and phone are required");
   }
 
+  if (!input.items.length) {
+    throw new Error("Add at least one product");
+  }
+
+  const items = input.items.map((item) => ({
+    productId: item.productId,
+    slug: item.slug,
+    name: item.name.trim(),
+    price: Math.max(0, item.price),
+    discount: Math.max(0, item.discount),
+    quantity: Math.max(1, item.quantity),
+    size: item.size || "M",
+    color: item.color || "Default",
+    image: item.image,
+    compareAtPrice: item.compareAtPrice ?? null,
+    currency: "BDT" as const,
+  }));
+
+  const subtotal = items.reduce(
+    (sum, item) => sum + Math.max(0, (item.price - item.discount) * item.quantity),
+    0,
+  );
+  const shippingFee = Math.max(0, input.shippingFee);
+  const orderDiscount = Math.max(0, input.orderDiscount);
+  const total = Math.max(0, subtotal + shippingFee - orderDiscount);
+  const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
+  const itemsSummary = items
+    .map((item) => item.name)
+    .slice(0, 3)
+    .join(", ");
+
   const Orders = getSeedModel("orders");
   const storeUpdated = await Orders.findOneAndUpdate(
     { legacyId: normalized },
@@ -326,6 +409,13 @@ export async function updateAdminOrderInDb(
       $set: {
         status: input.status,
         customer,
+        items,
+        subtotal,
+        shippingFee,
+        discount: orderDiscount,
+        total,
+        itemCount,
+        itemsSummary,
         updatedAt: now,
       },
     },
@@ -379,4 +469,253 @@ export async function deleteAdminOrderInDb(id: string): Promise<void> {
   if (legacyResult.deletedCount > 0) return;
 
   throw new Error("Order not found");
+}
+
+export type SendOrderToSteadfastResult = {
+  order: StoreOrder;
+  consignmentId: string | number;
+  trackingCode: string;
+};
+
+export async function sendOrderToSteadfastInDb(
+  id: string,
+): Promise<SendOrderToSteadfastResult> {
+  const normalized = id.trim();
+  if (!normalized) throw new Error("Order not found");
+
+  const order = await getAdminOrderById(normalized);
+  if (!order) throw new Error("Order not found");
+
+  const settings = await getSiteSettingsFromDbOrFallback();
+  const steadfast = resolveSteadfastConfig(settings);
+  assertSteadfastReady(steadfast);
+
+  await dbConnect();
+  const Orders = getSeedModel("orders");
+  const existingDoc = await Orders.findOne({ legacyId: normalized }).lean();
+  const existingRecord = (existingDoc ?? {}) as Record<string, unknown>;
+
+  if (existingRecord.steadfastConsignmentId) {
+    throw new Error("This order was already sent to Steadfast.");
+  }
+
+  const recipientPhone = normalizeSteadfastPhone(order.customer.phone);
+  if (recipientPhone.length !== 11 || !recipientPhone.startsWith("0")) {
+    throw new Error("Customer phone must be a valid 11-digit Bangladesh number.");
+  }
+
+  const recipientAddress = buildSteadfastAddress([
+    order.customer.address,
+    order.customer.city,
+    order.customer.region,
+    order.customer.deliveryArea,
+  ]);
+
+  if (!recipientAddress.trim()) {
+    throw new Error("Customer delivery address is required before sending to courier.");
+  }
+
+  const steadfastResult = await steadfastCreateOrder(
+    {
+      baseUrl: steadfast.baseUrl,
+      apiKey: steadfast.apiKey,
+      secretKey: steadfast.secretKey,
+    },
+    {
+      invoice: sanitizeSteadfastInvoice(order.orderNumber),
+      recipient_name: order.customer.name.trim().slice(0, 100),
+      recipient_phone: recipientPhone,
+      recipient_address: recipientAddress,
+      cod_amount: Math.max(0, Math.round(order.total)),
+      note: order.customer.note.trim() || undefined,
+      recipient_email: order.customer.email.trim() || undefined,
+      item_description: order.itemsSummary.slice(0, 250) || undefined,
+      total_lot: order.itemCount > 0 ? order.itemCount : undefined,
+      delivery_type: 0,
+    },
+  );
+
+  const now = new Date().toISOString();
+  const updatePayload = {
+    status: "entered_steadfast" as const,
+    steadfastConsignmentId: steadfastResult.consignmentId,
+    steadfastTrackingCode: steadfastResult.trackingCode,
+    steadfastInvoice: steadfastResult.invoice,
+    steadfastSentAt: now,
+    updatedAt: now,
+  };
+
+  const storeUpdated = await Orders.findOneAndUpdate(
+    { legacyId: normalized },
+    { $set: updatePayload },
+    { new: true },
+  ).lean();
+
+  if (storeUpdated) {
+    return {
+      order: mapStoreOrderDoc(storeUpdated as unknown as Record<string, unknown>),
+      consignmentId: steadfastResult.consignmentId,
+      trackingCode: steadfastResult.trackingCode,
+    };
+  }
+
+  throw new Error("Only storefront orders can be sent to Steadfast.");
+}
+
+function normalizeOrderPhone(value: string) {
+  const digits = value.replace(/\D/g, "");
+  if (digits.startsWith("880") && digits.length >= 13) {
+    return `0${digits.slice(3, 13)}`;
+  }
+  if (digits.startsWith("88") && digits.length >= 12) {
+    return `0${digits.slice(2, 12)}`;
+  }
+  if (digits.length === 10) {
+    return `0${digits}`;
+  }
+  return digits.slice(0, 11);
+}
+
+function phoneLookupVariants(phone: string) {
+  const normalized = normalizeOrderPhone(phone);
+  const digits = normalized.replace(/\D/g, "");
+  const withoutLeadingZero = digits.startsWith("0") ? digits.slice(1) : digits;
+  return [...new Set([phone.trim(), normalized, digits, `88${withoutLeadingZero}`, `880${withoutLeadingZero}`])].filter(
+    Boolean,
+  );
+}
+
+async function findSiteOrdersByPhone(
+  phone: string,
+  currentOrderId: string,
+): Promise<SiteOrderHistoryItem[]> {
+  const variants = phoneLookupVariants(phone);
+  if (variants.length === 0) return [];
+
+  const Orders = getSeedModel("orders");
+  const docs = await Orders.find({
+    $or: [
+      { customerPhone: { $in: variants } },
+      { "customer.phone": { $in: variants } },
+    ],
+  })
+    .sort({ createdAt: -1 })
+    .limit(30)
+    .lean();
+
+  const targetPhone = normalizeOrderPhone(phone);
+  return docs
+    .map((doc) => mapStoreOrderDoc(doc as unknown as Record<string, unknown>))
+    .filter((row) => normalizeOrderPhone(row.customer.phone) === targetPhone)
+    .map((row) => buildSiteOrderHistoryItem(row, currentOrderId));
+}
+
+function buildShipmentNote(order: StoreOrder): string {
+  if (order.steadfastConsignmentId != null && order.steadfastConsignmentId !== "") {
+    const tracking = order.steadfastTrackingCode?.trim();
+    return tracking
+      ? `Steadfast consignment #${order.steadfastConsignmentId} · Tracking ${tracking}`
+      : `Steadfast consignment #${order.steadfastConsignmentId}`;
+  }
+  return "No courier shipment for this order yet.";
+}
+
+function buildSiteOrderHistoryItem(
+  order: StoreOrder,
+  currentOrderId: string,
+): SiteOrderHistoryItem {
+  const itemNames = order.items.map((item) => item.name).slice(0, 2).join(", ");
+  return {
+    id: order.id,
+    orderNumber: order.orderNumber,
+    isCurrent: order.id === currentOrderId,
+    status: order.status,
+    statusLabel: ADMIN_ORDER_STATUS_LABELS[order.status],
+    itemsSummary: order.itemsSummary || itemNames || "Order items",
+    subtotal: order.subtotal,
+    shippingFee: order.shippingFee,
+    total: order.total,
+    address: [order.customer.address, order.customer.city, order.customer.region]
+      .filter(Boolean)
+      .join(", "),
+    createdAt: order.createdAt,
+    steadfastConsignmentId: order.steadfastConsignmentId ?? null,
+    shipmentNote: buildShipmentNote(order),
+  };
+}
+
+const PATHAO_NOT_CONFIGURED: CourierStats = {
+  available: false,
+  successRate: 0,
+  total: 0,
+  delivered: 0,
+  cancelled: 0,
+  rating: "Not connected",
+  risk: "unknown",
+  error: "Pathao API is not configured on this store.",
+};
+
+export async function getAdminOrderHistoryInDb(id: string) {
+  const normalized = id.trim();
+  if (!normalized) throw new Error("Order not found");
+
+  const order = await getAdminOrderById(normalized);
+  if (!order) throw new Error("Order not found");
+
+  await dbConnect();
+  const siteOrders = await findSiteOrdersByPhone(order.customer.phone, order.id);
+  const siteOrderCount = siteOrders.length;
+  const siteShipmentCount = siteOrders.filter(
+    (row) => row.steadfastConsignmentId != null && row.steadfastConsignmentId !== "",
+  ).length;
+
+  const settings = await getSiteSettingsFromDbOrFallback();
+  const shopLabel = settings.shopName?.trim() || "Hidden Urban";
+
+  let steadfastStats: CourierStats = {
+    available: false,
+    successRate: 0,
+    total: 0,
+    delivered: 0,
+    cancelled: 0,
+    rating: "Unavailable",
+    risk: "unknown",
+    error: "Steadfast is not configured.",
+  };
+
+  try {
+    const steadfast = resolveSteadfastConfig(settings);
+    assertSteadfastReady(steadfast);
+    const fraud = await steadfastFraudCheck(
+      {
+        baseUrl: steadfast.baseUrl,
+        apiKey: steadfast.apiKey,
+        secretKey: steadfast.secretKey,
+      },
+      order.customer.phone,
+    );
+    steadfastStats = {
+      available: true,
+      successRate: fraud.successRate,
+      total: fraud.total,
+      delivered: fraud.delivered,
+      cancelled: fraud.cancelled,
+      rating: fraud.rating,
+      risk: fraud.risk,
+    };
+  } catch (error) {
+    steadfastStats.error =
+      error instanceof Error ? error.message : "Could not load Steadfast customer history";
+  }
+
+  return {
+    customerName: order.customer.name,
+    customerPhone: order.customer.phone,
+    shopLabel,
+    siteOrderCount,
+    siteShipmentCount,
+    pathaoStats: PATHAO_NOT_CONFIGURED,
+    steadfastStats,
+    siteOrders,
+  } satisfies OrderHistoryResponse;
 }
